@@ -80,6 +80,9 @@ bool CCharacterBotAI::TakeDamage(vec2 Force, int Dmg, int From, int Weapon, int 
 	if(!pFrom || !IsAllowedPVP(From))
 		return false;
 
+	// Capture health before applying damage so we can record actual applied damage (accounts for crits, modifiers, overkill)
+	const int HealthBefore = m_Health;
+
 	// Take damage
 	CCharacter::TakeDamage(Force, Dmg, From, Weapon);
 
@@ -90,9 +93,13 @@ bool CCharacterBotAI::TakeDamage(vec2 Force, int Dmg, int From, int Weapon, int 
 		From = pFromBot->GetEidolonOwner()->GetCID();
 	}
 
-	// Add player to the list of damaged players
-	m_aDamageByPlayer[From] += maximum(0, Dmg);
-	m_pAI->OnTakeDamage(Dmg, From, Weapon);
+	// Calculate actual applied damage and record it
+	const int AppliedDamage = maximum(0, HealthBefore - m_Health);
+	if(AppliedDamage > 0)
+	{
+		m_aDamageByPlayer[From] += AppliedDamage;
+		m_pAI->OnTakeDamage(AppliedDamage, From, Weapon);
+	}
 
 	// Verify death
 	if(m_Health <= 0)
@@ -107,47 +114,69 @@ bool CCharacterBotAI::TakeDamage(vec2 Force, int Dmg, int From, int Weapon, int 
 
 void CCharacterBotAI::Die(int Killer, int Weapon)
 {
-	// Reward players & Notify about bosses
 	if(Weapon != WEAPON_SELF && Weapon != WEAPON_WORLD)
 	{
+		// Notify about bosses
 		auto* pMobInfo = m_pBotPlayer->GetBotType() == TYPE_BOT_MOB ? &m_pBotPlayer->GetMobInfo() : nullptr;
 		if(pMobInfo && pMobInfo->m_Boss && !m_aDamageByPlayer.empty())
 		{
-			std::vector<std::pair<int, int>> vDamageStats(m_aDamageByPlayer.begin(), m_aDamageByPlayer.end());
-			std::sort(vDamageStats.begin(), vDamageStats.end(), [](const auto& Left, const auto& Right)
+			std::vector<std::pair<int, int>> vStats(m_aDamageByPlayer.begin(), m_aDamageByPlayer.end());
+			std::sort(vStats.begin(), vStats.end(), [](const auto& Left, const auto& Right)
 			{ return Left.second > Right.second; });
 
-			const int TotalDamage = std::accumulate(vDamageStats.begin(), vDamageStats.end(), 0, [](int Sum, const auto& pStat) { return Sum + pStat.second; });
+			const int StartHealth = m_pBotPlayer->GetMaxHealth();
+			const int NumPlayers = (int)vStats.size();
 
-			for(const auto& DamageEntry : m_aDamageByPlayer)
+			// precompute percents so their sum won't exceed 100%
+			struct ClientStat { int ID; int Damage; int Percent; };
+			std::vector<ClientStat> FinalStats;
+			FinalStats.reserve(NumPlayers);
+
+			int sumPercents = 0;
+			for (const auto& [cid, damage] : vStats)
 			{
-				const int ForCID = DamageEntry.first;
-				GS()->Chat(ForCID, "Defeat '{}' by {} player's.", pMobInfo->GetName(), (int)m_aDamageByPlayer.size());
-				for(const auto& [AboutCID, AboutDamage] : vDamageStats)
-				{
-					const auto* pPlayer = GS()->GetPlayer(AboutCID, true, true);
-					if(!pPlayer)
-						continue;
+				int p = StartHealth > 0 ? clamp(round_to_int(translate_to_percent(StartHealth, minimum(damage, StartHealth))), 0, 100) : 0;
+				sumPercents += p;
+				FinalStats.push_back({ cid, damage, p });
+			}
 
-					const int DamagePercent = TotalDamage > 0 ? translate_to_percent(TotalDamage, AboutDamage) : 0;
-					GS()->Chat(ForCID, "- {~} dealt {} damage ({}%).", Server()->ClientName(AboutCID), AboutDamage, DamagePercent);
+			// if summed percents exceed 100, reduce from largest contributors
+			if (sumPercents > 100)
+			{
+				int diff = sumPercents - 100;
+				for (auto& s : FinalStats) 
+				{
+					int dec = minimum(s.Percent, diff);
+					s.Percent -= dec;
+					diff -= dec;
+					if (diff <= 0) 
+						break;
+				}
+			}
+
+			// Send information about stats to all players who contributed damage
+			for (const auto& [ForCID, _] : m_aDamageByPlayer)
+			{
+				GS()->Chat(ForCID, "Defeat '{}' by {} player's.", pMobInfo->GetName(), NumPlayers);
+				for (const auto& s : FinalStats)
+				{
+					if (Server()->ClientIngame(s.ID))
+						GS()->Chat(ForCID, "- {~} dealt {} damage ({}%).", Server()->ClientName(s.ID), s.Damage, s.Percent);
 				}
 			}
 		}
 
-		for(const auto& [ClientID, Damage] : m_aDamageByPlayer)
+		// Reward
+		const int BotWorldID = m_pBotPlayer->GetCurrentWorldID();
+		const vec2 BotPos = m_Core.m_Pos;
+		for (const auto& [ClientID, Damage] : m_aDamageByPlayer)
 		{
 			auto* pPlayer = GS()->GetPlayer(ClientID, true, true);
-			if(!pPlayer)
+			if (!pPlayer || !GS()->IsPlayerInWorld(ClientID, BotWorldID))
 				continue;
 
-			if(!GS()->IsPlayerInWorld(ClientID, m_pBotPlayer->GetCurrentWorldID()))
-				continue;
-
-			if(distance(pPlayer->m_ViewPos, m_Core.m_Pos) > 1000.0f)
-				continue;
-
-			m_pAI->OnRewardPlayer(pPlayer, m_DieForce);
+			if (distance(pPlayer->m_ViewPos, BotPos) < 1000.0f)
+				m_pAI->OnRewardPlayer(pPlayer, m_DieForce);
 		}
 	}
 
