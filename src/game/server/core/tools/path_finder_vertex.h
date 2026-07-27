@@ -90,6 +90,9 @@ public:
 	// add an edge between two vertices (undirected)
 	void addEdge(int from, int to) const
 	{
+		if (from >= m_numVertices || to >= m_numVertices)
+			return;
+
 		m_adjLists[from].push_back(to);
 		m_adjLists[to].push_back(from);
 	}

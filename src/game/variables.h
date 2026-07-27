@@ -245,6 +245,7 @@ MACRO_CONFIG_STR(SvSqlFailedLogFile, sv_sql_failed_log_file, 128, "sql_failed_lo
 
 // settings
 MACRO_CONFIG_INT(SvMaxSmoothViewCamSpeed, sv_max_smooth_view_cam_speed, 64, 32, 256, CFGFLAG_SERVER, "Max smooth view cam speed'")
+MACRO_CONFIG_INT(SvDevInitDefaultWorld, sv_dev_init_def_world, 0, 0, 1, CFGFLAG_SERVER, "Only default world for development")
 
 // ui
 MACRO_CONFIG_INT(ClNotifyWindow, cl_notify_window, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Allow client to notify you on chat highlights")

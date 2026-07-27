@@ -97,6 +97,9 @@ bool CMultiWorlds::LoadFromDB(IKernel* pKernel, IStorageEngine* pStorage)
 		const int WorldID = pRes->getInt("ID");
 		dbg_assert(WorldID < ENGINE_MAX_WORLDS, "exceeded pool of allocated memory for worlds");
 
+		if (g_Config.m_SvDevInitDefaultWorld && WorldID > BASE_GAME_WORLD_ID)
+			break;
+
 		std::string Name = pRes->getString("Name");
 		std::string Path = pRes->getString("Path");
 		std::string Type = pRes->getString("Type");
