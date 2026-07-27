@@ -381,16 +381,21 @@ bool EquipmentPresets::loadPresetImpl(int SlotIndex, CPlayer* pPlayer)
 			return false;
 	}
 
-	auto* pAccount = pPlayer->Account();
-
 	// change profession if needed
-	if (preset.ProfessionID >= 0)
+	auto* pAccount = pPlayer->Account();
+	if (preset.ProfessionID >= 0 && (int)pAccount->GetActiveProfessionID() != preset.ProfessionID)
 	{
-		pAccount->ChangeProfession((ProfessionIdentifier)preset.ProfessionID);
+		pAccount->SetProfessionRaw((ProfessionIdentifier)preset.ProfessionID);
+		GS()->Core()->SaveAccount(pPlayer, SAVE_PROFESSION);
 	}
 
+	// collect all equipment slots by player
+	std::vector<EquippedSlots::SlotEntry> vEquipmentProfession = pAccount->GetActiveProfession()->GetEquippedSlots().getSlots();
+	const auto& accountSlots = pAccount->GetEquippedSlots().getSlots();
+	vEquipmentProfession.insert(vEquipmentProfession.end(), accountSlots.begin(), accountSlots.end());
+
 	// unequip only items that differ from preset
-	for (const auto& [SlotType, ItemIDOpt] : pAccount->GetEquippedSlots().getSlots())
+	for (const auto& [SlotType, ItemIDOpt] : vEquipmentProfession)
 	{
 		if (!ItemIDOpt.has_value())
 			continue;

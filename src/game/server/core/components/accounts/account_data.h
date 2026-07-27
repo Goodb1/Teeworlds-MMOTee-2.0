@@ -76,6 +76,7 @@ public:
 	const EquipmentPresets& GetEquipmentPresets() const { return m_EquipmentPresets; }
 
 	void ChangeProfession(ProfessionIdentifier Profession);
+	void SetProfessionRaw(ProfessionIdentifier Profession) { m_pActiveProfession = GetProfession(Profession); }
 
 	CProfession* GetActiveProfession() const
 	{
