@@ -427,8 +427,13 @@ bool CInventoryManager::OnPlayerVoteCommand(CPlayer* pPlayer, const char* pCmd, 
 	if(PPSTR(pCmd, "PRESET_SAVE") == 0)
 	{
 		const int SlotIndex = GetIfExists<int>(Extras, 0, NOPE);
-		if (pPlayer->Account()->GetEquipmentPresets().Save(SlotIndex, pReason))
-			pPlayer->m_VotesData.UpdateCurrentVotes();
+		if (!pPlayer->Account()->GetEquipmentPresets().Save(SlotIndex, pReason))
+		{
+			GS()->Chat(ClientID, "Failed to save equipment preset. Make sure you have a valid name is correct.");
+			return true;
+		}
+		
+		pPlayer->m_VotesData.UpdateCurrentVotes();
 		return true;
 	}
 

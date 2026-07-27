@@ -40,6 +40,7 @@ CCommandProcessor::CCommandProcessor(CGS* pGS)
 	// game commands
 	AddCommand("group", "?s[element] ?s[post]", ConGroup, pServer, "Manage group settings");
 	AddCommand("guild", "?s[element] ?s[name]", ConChatGuild, pServer, "Manage guild settings");
+	AddCommand("preset", "?s[element] ?s[subelement]", ConChatPreset, pServer, "Manage equipment presets");
 	AddCommand("house", "?s[element] ?s[subelement] ?i[number]", ConChatHouse, pServer, "Manage house settings");
 	AddCommand("use_item", "i[item]", ConChatUseItem, pServer, "Use an item");
 	AddCommand("use_skill", "i[skill]", ConChatUseSkill, pServer, "Use a skill");
@@ -213,6 +214,108 @@ void CCommandProcessor::ConChatGuild(IConsole::IResult* pResult, void* pUser)
 	pGS->Chat(ClientID, "/guild create <name> - create a new guild");
 	pGS->Chat(ClientID, "/guild leave - leave the guild");
 
+}
+
+void CCommandProcessor::ConChatPreset(IConsole::IResult* pResult, void* pUser)
+{
+	const int ClientID = pResult->GetClientID();
+	auto* pGS = GetCommandResultGameServer(ClientID, pUser);
+	auto* pPlayer = pGS->GetPlayer(ClientID);
+	if (!is_valid_player(pGS, pPlayer, true))
+		return;
+
+	auto funcFreeIndex = [](CPlayer* pPlayer) -> int
+	{
+		const auto& Presets = pPlayer->Account()->GetEquipmentPresets().getPresets();
+		for (int i = 0; i < EquipmentPresets::MAX_PRESETS; i++)
+		{
+			if (Presets[i].Name.empty())
+				return i;
+		}
+		return -1;
+	};
+
+	auto funcParseSlot = [&](const char* pStr, int& OutIndex) -> bool
+	{
+		const int UserNumber = str_toint(pStr);
+		if (UserNumber < 1 || UserNumber > EquipmentPresets::MAX_PRESETS)
+		{
+			pGS->Chat(ClientID, "Invalid preset number. Valid range: 1-{}.", EquipmentPresets::MAX_PRESETS);
+			return false;
+		}
+		OutIndex = UserNumber - 1;
+		return true;
+	};
+
+	// save the current equipment to a new preset
+	const std::string pElem = pResult->GetString(0);
+	if (pElem.compare(0, 4, "save") == 0)
+	{
+		int FreeSlotIndex = funcFreeIndex(pPlayer);
+		if (FreeSlotIndex == -1)
+		{
+			pGS->Chat(ClientID, "You have reached the maximum number of equipment presets.");
+			return;
+		}
+
+		const char* pPresetName = pResult->GetString(1);
+		if(!pPlayer->Account()->GetEquipmentPresets().Save(FreeSlotIndex, pPresetName))
+		{
+			pGS->Chat(ClientID, "Failed to save equipment preset.");
+			return;
+		}
+
+		return;
+	}
+
+	// list all saved equipment presets
+	if (pElem.compare(0, 4, "list") == 0)
+	{
+		pGS->Chat(ClientID, mystd::aesthetic::boardPillar("Equipment presets", 7).c_str());
+		const auto& Presets = pPlayer->Account()->GetEquipmentPresets().getPresets();
+		
+		bool bHasAny = false;
+		for(int i = 0; i < EquipmentPresets::MAX_PRESETS; i++)
+		{
+			if (!Presets[i].Name.empty())
+			{
+				pGS->Chat(ClientID, "- [{}] Preset: {}", i + 1, Presets[i].Name);
+				bHasAny = true;
+			}
+		}
+		if(!bHasAny)
+			pGS->Chat(ClientID, "You have no saved presets.");
+		return;
+	}
+
+	// load the specified equipment preset
+	if (pElem.compare(0, 4, "load") == 0)
+	{
+		int SlotIndex;
+		if (!funcParseSlot(pResult->GetString(1), SlotIndex))
+			return;
+
+		pPlayer->Account()->GetEquipmentPresets().Load(SlotIndex);
+		return;
+	}
+
+	// remove the specified equipment preset
+	if (pElem.compare(0, 6, "remove") == 0)
+	{
+		int SlotIndex;
+		if (!funcParseSlot(pResult->GetString(1), SlotIndex))
+			return;
+
+		pPlayer->Account()->GetEquipmentPresets().Delete(SlotIndex);
+		return;
+	}
+
+	// display the preset command list
+	pGS->Chat(ClientID, mystd::aesthetic::boardPillar("Equipment presets", 7).c_str());
+	pGS->Chat(ClientID, "/preset save <name> - save equipment to a new preset");
+	pGS->Chat(ClientID, "/preset load <number> - load the equipment preset");
+	pGS->Chat(ClientID, "/preset remove <number> - remove the equipment preset");
+	pGS->Chat(ClientID, "/preset list - list all equipment presets");
 }
 
 void CCommandProcessor::ConChatHouse(IConsole::IResult* pResult, void* pUser)
@@ -440,6 +543,7 @@ void CCommandProcessor::ConChatCmdList(IConsole::IResult* pResult, void* pUser)
 		pGS->Chat(ClientID, "/use_skill <uid> - use skill by uid.");
 		pGS->Chat(ClientID, "/use_item <uid> - use item by uid.");
 		pGS->Chat(ClientID, "/assistant - personal progress assistant.");
+		pGS->Chat(ClientID, "/preset - equipment presets.");
 
 	}
 	else if(Page == 2)

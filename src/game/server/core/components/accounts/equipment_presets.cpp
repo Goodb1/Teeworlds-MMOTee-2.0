@@ -262,7 +262,7 @@ bool EquipmentPresets::Load(int SlotIndex)
 bool EquipmentPresets::Save(int SlotIndex, const std::string& PresetName)
 {
 	const auto pPlayer = GetPlayer();
-	if (SlotIndex < 0 || SlotIndex >= MAX_PRESETS || !pPlayer)
+	if (SlotIndex < 0 || SlotIndex >= MAX_PRESETS || !pPlayer || PresetName.empty())
 		return false;
 
 	if (savePresetImpl(SlotIndex, PresetName, pPlayer))
