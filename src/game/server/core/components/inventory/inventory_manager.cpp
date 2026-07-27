@@ -140,7 +140,16 @@ bool CInventoryManager::OnSendMenuVotes(CPlayer* pPlayer, int Menulist)
 					auto* pDropItemInfo = GS()->GetItemInfo(ItemDetail.ItemID);
 					const auto Value = ItemDetail.Value;
 					const auto pSelector = GetSelectorStringByCondition(pPlayer->m_CurrentRandomItem == ItemDetail);
-					VBoxDetail.Add("{~.2}% - {} x{$}{SELECTOR}", Chance, pDropItemInfo->GetName(), Value, pSelector);
+
+					// mark if player already has this non-stackable item
+					const char* pHaveMarker = "";
+					if(pDropItemInfo && !pDropItemInfo->IsStackable())
+					{
+						auto* pPlayerItem = pPlayer->GetItem(ItemDetail.ItemID);
+						if(pPlayerItem && pPlayerItem->HasItem())
+							pHaveMarker = " [✓]";
+					}
+					VBoxDetail.Add("{~.2}% - {} x{$}{}{SELECTOR}", Chance, pDropItemInfo->GetName(), Value, pHaveMarker, pSelector);
 				}
 
 				VBoxDetail.AddLine();
