@@ -464,6 +464,7 @@ bool CAccountManager::OnSendMenuVotes(CPlayer* pPlayer, int Menulist)
 
 		// select war profession
 		VoteWrapper VClassSelector(ClientID, VWF_SEPARATE_OPEN | VWF_ALIGN_TITLE | VWF_STYLE_STRICT_BOLD, "\u2694 Change class profession");
+		VClassSelector.AddMenu(MENU_EQUIPMENT_PRESETS, MENU_UPGRADES, "Manage equipment presets");
 		VClassSelector.AddMenu(MENU_UPGRADES_ATTRIBUTES_DETAIL, "Player Attributes: Details");
 		if(const auto* pActiveProf = pPlayer->Account()->GetActiveProfession())
 		{

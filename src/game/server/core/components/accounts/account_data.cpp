@@ -107,6 +107,7 @@ void CAccountData::Init(int ID, int ClientID, const char* pLogin, std::string La
 	// initialize sub account data.
 	InitProfessions();
 	InitSharedEquipments(pResult->getString("EquippedSlots"));
+	InitEquipmentPresets(pResult->getString("EquipmentPresets"));
 	InitAchievements();
 	m_pActiveProfession = GetProfession((ProfessionIdentifier)pResult->getInt("ProfessionID"));
 	m_BonusManager.Init(m_ClientID);
@@ -169,6 +170,17 @@ void CAccountData::InitSharedEquipments(const std::string& EquippedSlots)
 void CAccountData::SaveSharedEquipments()
 {
 	Database->Execute<DB::UPDATE>("tw_accounts_data", "EquippedSlots = '{}' WHERE ID = '{}'", m_EquippedSlots.dumpJson().dump(), m_ID);
+}
+
+void CAccountData::InitEquipmentPresets(const std::string& PresetsJson)
+{
+	if(!PresetsJson.empty())
+		m_EquipmentPresets.initialize(m_ClientID, PresetsJson);
+}
+
+void CAccountData::SaveEquipmentPresets()
+{
+	Database->Execute<DB::UPDATE>("tw_accounts_data", "EquipmentPresets = '{}' WHERE ID = '{}'", m_EquipmentPresets.dumpJson().dump(), m_ID);
 }
 
 void CAccountData::InitAchievements()

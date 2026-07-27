@@ -7,6 +7,7 @@
 #include "prison_manager.h"
 #include "profession.h"
 #include "rating_system.h"
+#include "equipment_presets.h"
 
 #include <game/server/core/components/guilds/guild_data.h>
 #include <game/server/core/components/auction/auction_data.h>
@@ -41,6 +42,7 @@ class CAccountData
 	BigInt m_Bank {};
 	RatingSystem m_RatingSystem{};
 	EquippedSlots m_EquippedSlots {};
+	EquipmentPresets m_EquipmentPresets {};
 
 	CGS* GS() const;
 	CPlayer* GetPlayer() const;
@@ -69,6 +71,9 @@ public:
 
 	EquippedSlots& GetEquippedSlots() { return m_EquippedSlots; }
 	const EquippedSlots& GetEquippedSlots() const { return m_EquippedSlots; }
+
+	EquipmentPresets& GetEquipmentPresets() { return m_EquipmentPresets; }
+	const EquipmentPresets& GetEquipmentPresets() const { return m_EquipmentPresets; }
 
 	void ChangeProfession(ProfessionIdentifier Profession);
 
@@ -106,6 +111,8 @@ public:
 	void InitProfessions();
 	void InitSharedEquipments(const std::string& EquippedSlots);
 	void SaveSharedEquipments();
+	void InitEquipmentPresets(const std::string& PresetsJson);
+	void SaveEquipmentPresets();
 	int GetID() const { return m_ID; }
 	void SetReadyToPlay(bool State) { m_ReadyToPlay = State; }
 	bool IsReadyToPlay() const { return m_ReadyToPlay; }

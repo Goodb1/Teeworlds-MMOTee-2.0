@@ -166,6 +166,7 @@ CREATE TABLE `tw_accounts_data` (
   `WeekStamp` bigint(20) NOT NULL DEFAULT 0,
   `MonthStamp` bigint(20) NOT NULL DEFAULT 0,
   `EquippedSlots` longtext DEFAULT NULL,
+  `EquipmentPresets` longtext DEFAULT '[]',
   `Achievements` longtext NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 

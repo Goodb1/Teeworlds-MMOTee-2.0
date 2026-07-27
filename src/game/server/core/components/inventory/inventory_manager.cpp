@@ -234,6 +234,7 @@ bool CInventoryManager::OnSendMenuVotes(CPlayer* pPlayer, int Menulist)
 		// basic equipments tools
 		VoteWrapper VMain(ClientID, VWF_ALIGN_TITLE | VWF_STYLE_SIMPLE, "\u2604 Equipment: Basic");
 		VMain.AddOption("AUTO_EQUIP_SLOTS", "Auto equip slots by best equipment");
+		VMain.AddMenu(MENU_EQUIPMENT_PRESETS, MENU_EQUIPMENT, "Manage equipment presets");
 		VoteWrapper::AddEmptyline(ClientID);
 
 		// profession slots
@@ -289,6 +290,41 @@ bool CInventoryManager::OnSendMenuVotes(CPlayer* pPlayer, int Menulist)
 		ShowPlayerModules(pPlayer);
 
 		// add backpage
+		VoteWrapper::AddBackpage(ClientID);
+		return true;
+	}
+
+	if(Menulist == MENU_EQUIPMENT_PRESETS)
+	{
+		const int LastMenuID = pPlayer->m_VotesData.GetExtraID().has_value() ? pPlayer->m_VotesData.GetExtraID().value() : MENU_MAIN;
+		pPlayer->m_VotesData.SetLastMenuID(LastMenuID);
+
+		VoteWrapper VInfo(ClientID, VWF_ALIGN_TITLE | VWF_STYLE_STRICT | VWF_SEPARATE, "Presets Information");
+		VInfo.Add("You can save your current equipment setup");
+		VInfo.Add("into a preset and load it later.");
+		VInfo.Add("Use reason for naming presets.");
+		VoteWrapper::AddEmptyline(ClientID);
+
+		const auto& Presets = pPlayer->Account()->GetEquipmentPresets().getPresets();
+		VoteWrapper VPresets(ClientID, VWF_ALIGN_TITLE | VWF_STYLE_SIMPLE, "Equipment Presets");
+		VPresets.BeginDepth();
+
+		for(int i = 0; i < EquipmentPresets::MAX_PRESETS; i++)
+		{
+			if(Presets[i].Name.empty())
+			{
+				VPresets.AddOption("PRESET_SAVE", i, "{}. [EMPTY]", i + 1);
+			}
+			else
+			{
+				VPresets.AddOption("PRESET_LOAD", i, "{}. {} [LOAD]", i + 1, Presets[i].Name);
+				VPresets.AddOption("PRESET_DELETE", i, "{}. {} [DELETE]", i + 1, Presets[i].Name);
+			}
+			VPresets.AddLine();
+		}
+
+		VPresets.EndDepth();
+		VoteWrapper::AddEmptyline(ClientID);
 		VoteWrapper::AddBackpage(ClientID);
 		return true;
 	}
@@ -387,7 +423,34 @@ bool CInventoryManager::OnPlayerVoteCommand(CPlayer* pPlayer, const char* pCmd, 
 		return true;
 	}
 
-	// Equip item
+	// equipment presets - Save
+	if(PPSTR(pCmd, "PRESET_SAVE") == 0)
+	{
+		const int SlotIndex = GetIfExists<int>(Extras, 0, NOPE);
+		if (pPlayer->Account()->GetEquipmentPresets().Save(SlotIndex, pReason))
+			pPlayer->m_VotesData.UpdateCurrentVotes();
+		return true;
+	}
+
+	// equipment presets - load
+	if(PPSTR(pCmd, "PRESET_LOAD") == 0)
+	{
+		const int SlotIndex = GetIfExists<int>(Extras, 0, NOPE);
+		if (pPlayer->Account()->GetEquipmentPresets().Load(SlotIndex))
+			pPlayer->m_VotesData.UpdateCurrentVotes();
+		return true;
+	}
+
+	// equipment presets - Delete
+	if(PPSTR(pCmd, "PRESET_DELETE") == 0)
+	{
+		const int SlotIndex = GetIfExists<int>(Extras, 0, NOPE);		
+		if (pPlayer->Account()->GetEquipmentPresets().Delete(SlotIndex))
+			pPlayer->m_VotesData.UpdateCurrentVotes();
+		return true;
+	}
+
+	// equip item
 	if(PPSTR(pCmd, "TOGGLE_EQUIP") == 0)
 	{
         const int ItemID = GetIfExists<int>(Extras, 0, NOPE);
@@ -406,7 +469,7 @@ bool CInventoryManager::OnPlayerVoteCommand(CPlayer* pPlayer, const char* pCmd, 
 		return true;
 	}
 
-	// Settings
+	// settings
 	if(PPSTR(pCmd, "TOGGLE_SETTING") == 0)
 	{
         const int ItemID = GetIfExists<int>(Extras, 0, NOPE);
@@ -713,6 +776,7 @@ void CInventoryManager::ShowPlayerModules(CPlayer* pPlayer)
 	VoteWrapper VSettings(ClientID, VWF_OPEN, "\u2699 Modules settings");
 	VSettings.AddOption("TOGGLE_SETTING", itShowOnlyFunctionModules, "[{}] {}",
 		SimpleView ? "Enabled" : "Disabled", pPlayer->GetItem(itShowOnlyFunctionModules)->Info()->GetName());
+	VSettings.AddMenu(MENU_EQUIPMENT_PRESETS, MENU_MODULES, "Manage equipment presets");
 	VoteWrapper::AddEmptyline(ClientID);
 
 	// add menus
