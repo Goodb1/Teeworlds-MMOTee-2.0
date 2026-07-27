@@ -293,10 +293,26 @@ bool CPlayerItem::Add(int Value, int StartSettings, int StartEnchant, time_t Sta
 		// send by mail no space for item
 		if(m_Value > 0)
 		{
+			// give material for duplicate item if it is title or has flags CANT_DROP and CANT_TRADE
+			if (Info()->IsType(ItemType::EquipTitle) || (Info()->HasFlag(ITEMFLAG_CANT_DROP) && Info()->HasFlag(ITEMFLAG_CANT_TRADE)))
+			{
+				int materialPrice = Info()->GetEnchantPrice(StartEnchant);
+				if (materialPrice <= 0)
+				{
+					GS()->Chat(m_ClientID, "Duplicate '{}' cannot be converted to material.", Info()->GetName());
+				}
+				else
+				{
+					pPlayer->GetItem(itMaterial)->Add(materialPrice);
+					GS()->Chat(m_ClientID, "Duplicate '{}' converted to {} material.", Info()->GetName(), materialPrice);
+				}
+				return true;
+			}
+
+			// or send by mail no space for item
 			MailWrapper Mail("System", pPlayer->Account()->GetID(), "No place for item.");
 			Mail.AddDescLine("You already have this item.");
 			Mail.AddDescLine("We can't put it in inventory");
-
 			Mail.AttachItem(CItem(m_ID, 1, StartEnchant, 100));
 			Mail.Send();
 			return false;
