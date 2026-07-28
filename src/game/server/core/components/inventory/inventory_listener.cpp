@@ -80,10 +80,27 @@ void CInventoryListener::OnPlayerEquipItem(CPlayer* pPlayer, CPlayerItem* pItem)
 
 void CInventoryListener::OnPlayerDurabilityItem(CPlayer* pPlayer, CPlayerItem* pItem, int OldDurability)
 {
+	if (!pPlayer || !pItem)
+		return;
+
 	const auto currentDurability = pItem->GetDurability();
 	if((OldDurability <= 0 && currentDurability > 0) ||
 		(OldDurability > 0 && currentDurability <= 0))
 		UpdateAttributesForItem(pPlayer, pItem);
+
+	// Module: Repair equipment anywhere (uses materials)
+	auto* pGS = pPlayer->GS();
+	if (currentDurability <= 0 && pPlayer->GetItem(itPortableAnvil)->IsEquipped())
+	{
+		const int RepairCost = (pItem->GetEnchantPrice() * 0.10f);
+		if (pPlayer->GetItem(itMaterial)->GetValue() >= RepairCost)
+		{
+			pPlayer->GetItem(itMaterial)->Remove(RepairCost);
+			pItem->SetDurability(100);
+			pGS->Chat(pPlayer->GetCID(), "Your {} has been repaired using {} materials!", pItem->Info()->GetName(), RepairCost);
+			UpdateAttributesForItem(pPlayer, pItem);
+		}
+	}
 }
 
 void CInventoryListener::OnPlayerUnequipItem(CPlayer* pPlayer, CPlayerItem* pItem)
