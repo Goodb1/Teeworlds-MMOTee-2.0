@@ -728,6 +728,7 @@ enum
 	itPortableAnvil                = 480,   // Repair equipment anywhere (uses materials)
 	itLuckySieve                   = 481,   // Trash resources may turn into materials
 	itDoubleLine                   = 482,   // 10% chance to catch two fish at once
+	itMirrorOfPain                 = 483,   // Reflects 10% of taken damage back
 
 	// reset upgrades tomes
 	itTomeOfUpgrResetTank          = 399,   // Reset upgrade for Tank

@@ -25,7 +25,7 @@ CEntityTeslaSerpent::CEntityTeslaSerpent(CGameWorld* pGameWorld, int OwnerCID, v
 
 	GameWorld()->InsertEntity(this);
 
-	// append damage by 25% from item
+	// Module: Increases electro damage by 25%
 	if(auto* pOwner = GetOwner(); pOwner && pOwner->GetItem(itTeslaInductiveCoil)->IsEquipped())
 	{
 		m_Damage += maximum(1.0f, translate_to_percent_rest(m_Damage, 25.0f));

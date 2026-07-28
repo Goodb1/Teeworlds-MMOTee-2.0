@@ -257,7 +257,7 @@ void CEntityFishingRod::FishingTick(CPlayer* pPlayer, CProfession* pFisherman, G
 			GS()->Core()->MiniEventsManager()->ApplyBonus(MiniEventType::FishingDrop, &Value);
 			pFisherman->AddExperience(pNode->Level * 2);
 
-			// double line chance
+			// Module: double line chance
 			Chance DoubleLineChance(10.f);
 			if (pPlayer->GetItem(itDoubleLine)->IsEquipped() && DoubleLineChance())
 			{

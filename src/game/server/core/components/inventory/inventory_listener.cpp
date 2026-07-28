@@ -9,6 +9,7 @@ constexpr const char* ATTRIBUTE_TRACKING_FILE_NAME = "server_data/attribute_trac
 void CInventoryListener::Initialize()
 {
 	g_EventListenerManager.RegisterListener(IEventListener::CharacterSpawn, this);
+	g_EventListenerManager.RegisterListener(IEventListener::CharacterDamage, this);
 	g_EventListenerManager.RegisterListener(IEventListener::PlayerLogin, this);
 	g_EventListenerManager.RegisterListener(IEventListener::PlayerProfessionUpgrade, this);
 	g_EventListenerManager.RegisterListener(IEventListener::PlayerProfessionChange, this);
@@ -29,6 +30,25 @@ void CInventoryListener::OnCharacterSpawn(CPlayer* pPlayer)
 	UpdateAttributesFull(pPlayer);
 }
 
+void CInventoryListener::OnCharacterDamage(CPlayer* pFrom, CPlayer* pTo, int Damage)
+{
+	if (!pFrom || !pTo || Damage <= 0)
+		return;
+
+	auto* pGS = pFrom->GS();
+
+	// Module: Reflects 10% of taken damage back
+	if (pTo->GetItem(itMirrorOfPain)->IsEquipped() && pFrom->GetCharacter())
+	{
+		if (Chance Reflect(10.f); Reflect())
+		{
+			const auto reflectedDamage = maximum(1, round_to_int(Damage * 0.10f));
+			pGS->CreateDamage(pFrom->GetCharacter()->GetPos(), pTo->GetCID(), reflectedDamage, 0.f, -1);
+			pFrom->GetCharacter()->TakeDamage({}, reflectedDamage, pTo->GetCID(), WEAPON_SELF);
+		}
+	}
+}
+
 void CInventoryListener::OnPlayerLogin(CPlayer* pPlayer, CAccountData* pAccount)
 {
 	if(!pPlayer || !pAccount)
@@ -45,7 +65,7 @@ void CInventoryListener::OnPlayerGotItem(CPlayer* pPlayer, CPlayerItem* pItem, i
 	
 	auto* pGS = pPlayer->GS();
 
-	// Trash resources may turn into materials
+	// Module: Trash resources may turn into materials
 	if(pItem->GetID() == itTrash)
 	{
 		const int TrashValue = pItem->GetValue();

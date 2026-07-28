@@ -53,6 +53,7 @@ public:
 
 protected:
     void OnCharacterSpawn(CPlayer* pPlayer) override;
+	void OnCharacterDamage(CPlayer* pFrom, CPlayer* pTo, int Damage) override;
     void OnPlayerLogin(CPlayer* pPlayer, CAccountData* pAccount) override;
     void OnPlayerGotItem(CPlayer* pPlayer, CPlayerItem* pItem, int Got) override;
     void OnPlayerEquipItem(CPlayer* pPlayer, CPlayerItem* pItem) override;
