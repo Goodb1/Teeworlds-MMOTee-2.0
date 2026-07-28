@@ -256,6 +256,15 @@ void CEntityFishingRod::FishingTick(CPlayer* pPlayer, CProfession* pFisherman, G
 			auto* pPlayerItem = pPlayer->GetItem(ItemID);
 			GS()->Core()->MiniEventsManager()->ApplyBonus(MiniEventType::FishingDrop, &Value);
 			pFisherman->AddExperience(pNode->Level * 2);
+
+			// double line chance
+			Chance DoubleLineChance(10.f);
+			if (pPlayer->GetItem(itDoubleLine)->IsEquipped() && DoubleLineChance())
+			{
+				GS()->Chat(m_ClientID, "Double line activated! You caught double the fish!");
+				Value *= 2;
+			}
+
 			pPlayerItem->Add(Value);
 
 			// create design drop pickup
