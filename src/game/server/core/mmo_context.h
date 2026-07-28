@@ -729,6 +729,8 @@ enum
 	itLuckySieve                   = 481,   // Trash resources may turn into materials
 	itDoubleLine                   = 482,   // 10% chance to catch two fish at once
 	itMirrorOfPain                 = 483,   // Reflects 10% of taken damage back
+	itRegenerationAmulet           = 485,   // Passively regenerate 3% HP every 3 seconds
+	itPiggyBank                    = 486,   // Don't lose gold when you die from mobs
 
 	// reset upgrades tomes
 	itTomeOfUpgrResetTank          = 399,   // Reset upgrade for Tank

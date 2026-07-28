@@ -853,17 +853,24 @@ void CCharacter::HandleEventsDeath(int Killer, vec2 Force) const
 	auto* pItemGold = m_pPlayer->GetItem(itGold);
 
 	// loss gold at death
-	if(GS()->HasWorldFlag(WORLD_FLAG_LOST_DEATH_GOLD) &&
-		g_Config.m_SvGoldLossOnDeath)
+	if(GS()->HasWorldFlag(WORLD_FLAG_LOST_DEATH_GOLD) && g_Config.m_SvGoldLossOnDeath)
 	{
-		const int LossGold = minimum(translate_to_percent_rest(pItemGold->GetValue(), (float)g_Config.m_SvGoldLossOnDeath), pItemGold->GetValue());
-		if(LossGold > 0 && pItemGold->Remove(LossGold))
+		// Module: Don't lose gold when you die from mobs
+		if (m_pPlayer->GetItem(itPiggyBank)->IsEquipped() && !KillerIsPlayer)
 		{
-			GS()->EntityManager()->DropItem(m_Pos, Killer >= MAX_PLAYERS ? -1 : Killer, { itGold, LossGold }, Force);
-			if(KillerIsPlayer)
-				GS()->Chat(m_ClientID, "You lost '{}% ({$}) gold', killer '{~}'!", g_Config.m_SvGoldLossOnDeath, LossGold, Server()->ClientName(Killer));
-			else
-				GS()->Chat(m_ClientID, "You lost '{}% ({$})' gold due to death!", g_Config.m_SvGoldLossOnDeath, LossGold);
+			GS()->Chat(m_ClientID, "You have a piggy bank equipped, so you don't lose gold on death.");
+		}
+		else
+		{
+			const int LossGold = minimum(translate_to_percent_rest(pItemGold->GetValue(), (float)g_Config.m_SvGoldLossOnDeath), pItemGold->GetValue());
+			if (LossGold > 0 && pItemGold->Remove(LossGold))
+			{
+				GS()->EntityManager()->DropItem(m_Pos, Killer >= MAX_PLAYERS ? -1 : Killer, { itGold, LossGold }, Force);
+				if (KillerIsPlayer)
+					GS()->Chat(m_ClientID, "You lost '{}% ({$}) gold', killer '{~}'!", g_Config.m_SvGoldLossOnDeath, LossGold, Server()->ClientName(Killer));
+				else
+					GS()->Chat(m_ClientID, "You lost '{}% ({$})' gold due to death!", g_Config.m_SvGoldLossOnDeath, LossGold);
+			}
 		}
 	}
 
@@ -1825,9 +1832,13 @@ void CCharacter::HandlePlayer()
 	if(!m_pPlayer->IsAuthed())
 		return;
 
-	// recovery mana
 	if(Server()->Tick() % (Server()->TickSpeed() * 3) == 0)
 	{
+		// Module: Passively regenerate 3% HP every 3 seconds
+		if (m_Health < m_pPlayer->GetMaxHealth() && m_pPlayer->GetItem(itRegenerationAmulet)->IsEquipped())
+			IncreaseHealth(maximum(1, round_to_int(m_pPlayer->GetMaxHealth() * 0.03f)));
+
+		// recovery mana
 		if(m_Mana < m_pPlayer->GetMaxMana())
 			IncreaseMana(m_pPlayer->GetMaxMana() / 20);
 	}
