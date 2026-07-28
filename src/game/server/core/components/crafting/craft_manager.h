@@ -27,6 +27,8 @@ class CCraftManager : public MmoComponent
 	void ShowCraftItem(CPlayer* pPlayer, CCraftItem* pCraft) const;
 	void CraftItem(CPlayer* pPlayer, CCraftItem* pCraft, int Value) const;
 
+	CCraftItem* GetCraftByItemID(int ItemID) const;
+
 public:
 	CCraftItem* GetCraftByID(CraftIdentifier ID) const;
 };

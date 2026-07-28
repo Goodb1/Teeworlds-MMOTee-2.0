@@ -153,7 +153,6 @@ void CCraftManager::CraftItem(CPlayer* pPlayer, CCraftItem* pCraft, int Value) c
 	pPlayer->m_VotesData.UpdateCurrentVotes();
 }
 
-
 bool CCraftManager::OnPlayerVoteCommand(CPlayer* pPlayer, const char* pCmd, const std::vector<std::any> &Extras, int ReasonNumber, const char* pReason)
 {
 	// craft item function
@@ -250,10 +249,21 @@ void CCraftManager::ShowCraftItem(CPlayer* pPlayer, CCraftItem* pCraft) const
 		{
 			CPlayerItem* pPlayerItem = pPlayer->GetItem(pRequiredItem);
 			bool hasEnoughItems = pPlayerItem->GetValue() >= pRequiredItem.GetValue();
-			VCraftRequired.MarkList().Add("{} {} x{} ({})", hasEnoughItems ? "\u2714" : "\u2718",
-				pRequiredItem.Info()->GetName(), pRequiredItem.GetValue(), pPlayerItem->GetValue());
-			if(SourceView)
-				VCraftRequired.Add("  ↳ source: ({~})", ItemHelper::BuildSourceHint(GS(), pRequiredItem.GetID()));
+			auto* pCraftIngredient = GetCraftByItemID(pRequiredItem.GetID());
+
+			// is clickable craft
+			if (pCraftIngredient)
+			{
+				VCraftRequired.AddMenu(MENU_CRAFTING_SELECT, pCraftIngredient->GetID(), "{} {} x{} ({}) (clickable)", hasEnoughItems ? "\u2714" : "\u2718",
+					pRequiredItem.Info()->GetName(), pRequiredItem.GetValue(), pPlayerItem->GetValue());
+			}
+			else
+			{
+				VCraftRequired.MarkList().Add("{} {} x{} ({})", hasEnoughItems ? "\u2714" : "\u2718",
+					pRequiredItem.Info()->GetName(), pRequiredItem.GetValue(), pPlayerItem->GetValue());
+				if (SourceView)
+					VCraftRequired.Add("  ↳ source: ({~})", ItemHelper::BuildSourceHint(GS(), pRequiredItem.GetID()));
+			}
 		}
 		VCraftRequired.EndDepth();
 	}
@@ -406,6 +416,16 @@ void CCraftManager::ShowGroupedSelector(CPlayer* pPlayer) const
 	}
 }
 
+CCraftItem* CCraftManager::GetCraftByItemID(int ItemID) const
+{
+	for (const auto& craftItem : CCraftItem::Data())
+	{
+		if (craftItem->GetItem()->GetID() == ItemID)
+			return craftItem;
+	}
+
+	return nullptr;
+}
 
 
 CCraftItem* CCraftManager::GetCraftByID(CraftIdentifier ID) const

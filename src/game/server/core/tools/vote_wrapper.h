@@ -4,6 +4,7 @@
 #define GAME_SERVER_CORE_UTILITIES_VOTE_WRAPPER_H
 
 #include <base/types.h>
+#include <stack>
 
 // forward declarations
 class CGS;
@@ -345,6 +346,7 @@ class CVotePlayerData
 	enum class STATE_UPDATER { WAITING, RUNNING, DONE };
 	std::atomic<STATE_UPDATER> m_VoteUpdaterStatus{ STATE_UPDATER::WAITING };
 	ska::unordered_map<int, ska::unordered_map<int, VoteGroupHidden>> m_aHiddenGroup{};
+	std::unordered_map<int, std::stack<std::optional<int>>> m_aExtraIDHistory;
 
 	VoteGroupHidden* EmplaceHidden(int ID, int Type);
 	VoteGroupHidden* GetHidden(int ID);
@@ -391,6 +393,12 @@ public:
 
 	void SetLastMenuID(int MenuID) { m_LastMenuID = MenuID; }
 	int GetLastMenuID() const { return m_LastMenuID; }
+
+	void PushExtraID(int MenuID, std::optional<int> ExtraID);
+	std::optional<int> PopExtraID(int MenuID);
+	std::optional<int> PeekExtraID(int MenuID) const;
+	bool HasExtraIDHistory(int MenuID) const;
+	void ClearExtraIDHistory(int MenuID);
 
 	bool DefaultVoteCommands(const char* pCmd, std::vector<std::any> Extras, int ReasonNumber, const char* pReason);
 };

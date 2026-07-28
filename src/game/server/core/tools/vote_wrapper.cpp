@@ -474,6 +474,49 @@ void CVotePlayerData::ClearVotes() const
 	Instance::Server()->SendPackMsg(&ClearMsg, MSGFLAG_VITAL, ClientID);
 }
 
+void CVotePlayerData::PushExtraID(int MenuID, std::optional<int> ExtraID)
+{
+	m_aExtraIDHistory[MenuID].push(ExtraID);
+}
+
+std::optional<int> CVotePlayerData::PopExtraID(int MenuID)
+{
+	auto it = m_aExtraIDHistory.find(MenuID);
+	if (it != m_aExtraIDHistory.end() && !it->second.empty())
+	{
+		auto ExtraID = it->second.top();
+		it->second.pop();
+		return ExtraID;
+	}
+	return std::nullopt;
+}
+
+std::optional<int> CVotePlayerData::PeekExtraID(int MenuID) const
+{
+	auto it = m_aExtraIDHistory.find(MenuID);
+	if (it != m_aExtraIDHistory.end() && !it->second.empty())
+	{
+		return it->second.top();
+	}
+	return std::nullopt;
+}
+
+bool CVotePlayerData::HasExtraIDHistory(int MenuID) const
+{
+	auto it = m_aExtraIDHistory.find(MenuID);
+	return it != m_aExtraIDHistory.end() && !it->second.empty();
+}
+
+void CVotePlayerData::ClearExtraIDHistory(int MenuID)
+{
+	auto it = m_aExtraIDHistory.find(MenuID);
+	if (it != m_aExtraIDHistory.end())
+	{
+		while (!it->second.empty())
+			it->second.pop();
+	}
+}
+
 bool CVotePlayerData::DefaultVoteCommands(const char* pCmd, std::vector<std::any> Extras, int, const char*)
 {
 	// is empty
@@ -481,12 +524,18 @@ bool CVotePlayerData::DefaultVoteCommands(const char* pCmd, std::vector<std::any
 		return true;
 
 	// command menu
-	if(PPSTR(pCmd, "MENU") == 0)
+	if (PPSTR(pCmd, "MENU") == 0)
 	{
-        const int MenuID = GetIfExists<int>(Extras, 0, NOPE);
-        const int GroupID = GetIfExists<int>(Extras, 1, NOPE);
-		m_ExtraID = GroupID <= NOPE ? std::nullopt : std::make_optional(GroupID);
+		const int MenuID = GetIfExists<int>(Extras, 0, NOPE);
+		const int GroupID = GetIfExists<int>(Extras, 1, NOPE);
+		std::optional<int> NewExtraID = GroupID <= NOPE ? std::nullopt : std::make_optional(GroupID);
 
+		if (MenuID == m_CurrentMenuID)
+			PushExtraID(MenuID, m_ExtraID);
+		else
+			ClearExtraIDHistory(MenuID);
+
+		m_ExtraID = NewExtraID;
 		m_pGS->CreatePlayerSound(m_pPlayer->GetCID(), SOUND_UI_MENU_CLICK);
 		ResetHidden(MenuID);
 		UpdateVotes(MenuID);
@@ -497,7 +546,16 @@ bool CVotePlayerData::DefaultVoteCommands(const char* pCmd, std::vector<std::any
 	if(PPSTR(pCmd, "BACK") == 0)
 	{
 		m_pGS->CreatePlayerSound(m_pPlayer->GetCID(), SOUND_UI_MENU_CLICK);
-		UpdateVotes(m_LastMenuID);
+		if (HasExtraIDHistory(m_CurrentMenuID))
+		{
+			m_ExtraID = PopExtraID(m_CurrentMenuID);
+			UpdateCurrentVotes();
+		}
+		else
+		{
+			m_ExtraID = std::nullopt;
+			UpdateVotes(m_LastMenuID);
+		}
 		return true;
 	}
 
