@@ -254,16 +254,16 @@ void CCraftManager::ShowCraftItem(CPlayer* pPlayer, CCraftItem* pCraft) const
 			// is clickable craft
 			if (pCraftIngredient)
 			{
-				VCraftRequired.AddMenu(MENU_CRAFTING_SELECT, pCraftIngredient->GetID(), "{} {} x{} ({}) (clickable)", hasEnoughItems ? "\u2714" : "\u2718",
-					pRequiredItem.Info()->GetName(), pRequiredItem.GetValue(), pPlayerItem->GetValue());
+				VCraftRequired.MarkList().AddMenu(MENU_CRAFTING_SELECT, pCraftIngredient->GetID(), "{} {} x{} ({}) →", 
+					hasEnoughItems ? "\u2714" : "\u2718", pRequiredItem.Info()->GetName(), pRequiredItem.GetValue(), pPlayerItem->GetValue());
 			}
 			else
 			{
 				VCraftRequired.MarkList().Add("{} {} x{} ({})", hasEnoughItems ? "\u2714" : "\u2718",
 					pRequiredItem.Info()->GetName(), pRequiredItem.GetValue(), pPlayerItem->GetValue());
-				if (SourceView)
-					VCraftRequired.Add("  ↳ source: ({~})", ItemHelper::BuildSourceHint(GS(), pRequiredItem.GetID()));
 			}
+			if (SourceView)
+				VCraftRequired.Add("  ↳ source: \"{~}\"", ItemHelper::BuildSourceHint(GS(), pRequiredItem.GetID()));
 		}
 		VCraftRequired.EndDepth();
 	}
