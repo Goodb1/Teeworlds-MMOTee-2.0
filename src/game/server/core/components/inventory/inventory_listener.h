@@ -52,16 +52,17 @@ public:
     CAttributesTracker& AttributeTracker() { return m_AttributesTracker; }
 
 protected:
-    void OnCharacterSpawn(CPlayer* pPlayer) override;
-	void OnCharacterDamage(CPlayer* pFrom, CPlayer* pTo, int Damage) override;
     void OnPlayerLogin(CPlayer* pPlayer, CAccountData* pAccount) override;
     void OnPlayerGotItem(CPlayer* pPlayer, CPlayerItem* pItem, int Got) override;
     void OnPlayerEquipItem(CPlayer* pPlayer, CPlayerItem* pItem) override;
     void OnPlayerDurabilityItem(CPlayer* pPlayer, CPlayerItem* pItem, int OldDurability) override;
     void OnPlayerUnequipItem(CPlayer* pPlayer, CPlayerItem* pItem) override;
     void OnPlayerEnchantItem(CPlayer* pPlayer, CPlayerItem* pItem) override;
+	void OnPlayerChangePreset(CPlayer* pPlayer, int PresetSlotIndex) override;
     void OnPlayerProfessionUpgrade(CPlayer* pPlayer, int AttributeID) override;
     void OnPlayerProfessionChange(CPlayer* pPlayer, CProfession* pOld, CProfession* pNew) override;
+    void OnCharacterSpawn(CPlayer* pPlayer) override;
+    void OnCharacterDamage(CPlayer* pFrom, CPlayer* pTo, int Damage) override;
 
 private:
     void UpdateAttributesForItem(CPlayer* pPlayer, CPlayerItem* pItem);

@@ -26,6 +26,7 @@ class CPlayerQuest;
     XEV(PlayerLostItem,                 OnPlayerLostItem,                 CPlayer* pPlayer, CPlayerItem* pItem, int Lost) \
     XEV(PlayerCraftItem,                OnPlayerCraftItem,                CPlayer* pPlayer, CCraftItem* pCraft, int Amount, int Extra) \
     XEV(PlayerEquipItem,                OnPlayerEquipItem,                CPlayer* pPlayer, CPlayerItem* pItem) \
+    XEV(PlayerChangePreset,             OnPlayerChangePreset,             CPlayer* pPlayer, int PresetSlotIndex) \
     XEV(PlayerUnequipItem,              OnPlayerUnequipItem,              CPlayer* pPlayer, CPlayerItem* pItem) \
     XEV(PlayerEnchantItem,              OnPlayerEnchantItem,              CPlayer* pPlayer, CPlayerItem* pItem) \
     XEV(PlayerDurabilityItem,           OnPlayerDurabilityItem,           CPlayer* pPlayer, CPlayerItem* pItem, int OldDurability) \

@@ -1,6 +1,7 @@
 #include "equipment_presets.h"
 
 #include <game/server/gamecontext.h>
+#include <generated/server_data.h>
 
 CGS* EquipmentPresets::GS() const
 {
@@ -256,6 +257,7 @@ bool EquipmentPresets::Load(int SlotIndex)
 		return true;
 	}
 
+	GS()->CreateSound(pPlayer->m_ViewPos, SOUND_SFX_CHANGE_PROFESSION);
 	GS()->Chat(m_ClientID, "Loaded equipment preset '{}'", pPreset->Name);
 	return true;
 }
@@ -454,5 +456,7 @@ bool EquipmentPresets::loadPresetImpl(int SlotIndex, CPlayer* pPlayer)
 			pItem->Equip();
 	}
 
+	// notify about change equipment preset
+	g_EventListenerManager.Notify<IEventListener::PlayerChangePreset>(pPlayer, SlotIndex);
 	return true;
 }

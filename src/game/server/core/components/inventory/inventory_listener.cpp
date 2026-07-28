@@ -1,6 +1,7 @@
 #include "inventory_listener.h"
 #include <game/server/gamecontext.h>
 #include <game/server/worldmodes/dungeon/dungeon.h>
+#include <game/server/core/entities/tools/flying_point.h>
 
 CInventoryListener g_InventoryListener;
 constexpr const char* ATTRIBUTE_TRACKING_FILE_NAME = "server_data/attribute_tracking.json";
@@ -8,8 +9,6 @@ constexpr const char* ATTRIBUTE_TRACKING_FILE_NAME = "server_data/attribute_trac
 // inventory listener
 void CInventoryListener::Initialize()
 {
-	g_EventListenerManager.RegisterListener(IEventListener::CharacterSpawn, this);
-	g_EventListenerManager.RegisterListener(IEventListener::CharacterDamage, this);
 	g_EventListenerManager.RegisterListener(IEventListener::PlayerLogin, this);
 	g_EventListenerManager.RegisterListener(IEventListener::PlayerProfessionUpgrade, this);
 	g_EventListenerManager.RegisterListener(IEventListener::PlayerProfessionChange, this);
@@ -18,51 +17,28 @@ void CInventoryListener::Initialize()
 	g_EventListenerManager.RegisterListener(IEventListener::PlayerUnequipItem, this);
 	g_EventListenerManager.RegisterListener(IEventListener::PlayerEnchantItem, this);
 	g_EventListenerManager.RegisterListener(IEventListener::PlayerDurabilityItem, this);
+	g_EventListenerManager.RegisterListener(IEventListener::PlayerChangePreset, this);
+	g_EventListenerManager.RegisterListener(IEventListener::CharacterSpawn, this);
+	g_EventListenerManager.RegisterListener(IEventListener::CharacterDamage, this);
 	m_AttributesTracker.LoadTrackingData();
-}
-
-
-void CInventoryListener::OnCharacterSpawn(CPlayer* pPlayer)
-{
-	if(!pPlayer)
-		return;
-
-	UpdateAttributesFull(pPlayer);
-}
-
-void CInventoryListener::OnCharacterDamage(CPlayer* pFrom, CPlayer* pTo, int Damage)
-{
-	if (!pFrom || !pTo || Damage <= 0)
-		return;
-
-	auto* pGS = pFrom->GS();
-
-	// Module: Reflects 10% of taken damage back
-	if (pTo->GetItem(itMirrorOfPain)->IsEquipped() && pFrom->GetCharacter())
-	{
-		const auto reflectedDamage = maximum(1, round_to_int(Damage * 0.10f));
-		pGS->CreateDamage(pFrom->GetCharacter()->GetPos(), pTo->GetCID(), reflectedDamage, 0.f, -1);
-		pFrom->GetCharacter()->TakeDamage({}, reflectedDamage, pTo->GetCID(), WEAPON_SELF);
-	}
 }
 
 void CInventoryListener::OnPlayerLogin(CPlayer* pPlayer, CAccountData* pAccount)
 {
-	if(!pPlayer || !pAccount)
-		return;
-
-	pAccount->AutoEquipSlots(true);
-	pPlayer->InvalidateAttributeCache();
+	if (pPlayer && pAccount)
+	{
+		pAccount->AutoEquipSlots(true);
+		pPlayer->InvalidateAttributeCache();
+	}
 }
 
 void CInventoryListener::OnPlayerGotItem(CPlayer* pPlayer, CPlayerItem* pItem, int Got)
 {
 	if (!pPlayer || !pItem)
 		return;
-	
-	auto* pGS = pPlayer->GS();
 
 	// Module: Trash resources may turn into materials
+	auto* pGS = pPlayer->GS();
 	if(pItem->GetID() == itTrash)
 	{
 		const int TrashValue = pItem->GetValue();
@@ -74,7 +50,6 @@ void CInventoryListener::OnPlayerGotItem(CPlayer* pPlayer, CPlayerItem* pItem, i
 		}
 	}
 }
-
 
 void CInventoryListener::OnPlayerProfessionUpgrade(CPlayer* pPlayer, int AttributeID)
 {
@@ -88,20 +63,15 @@ void CInventoryListener::OnPlayerProfessionUpgrade(CPlayer* pPlayer, int Attribu
 	m_AttributesTracker.UpdateTrackingDataIfNecessary(pPlayer, AttributeID, totalAttribute);
 }
 
-
 void CInventoryListener::OnPlayerProfessionChange(CPlayer* pPlayer, CProfession* pOldProf, CProfession* pNewProf)
 {
-	if(!pPlayer)
-		return;
-
-	if(pOldProf != pNewProf)
+	if(pPlayer && pOldProf != pNewProf)
 	{
 		pPlayer->Account()->AutoEquipSlots(true);
 		pPlayer->InvalidateAttributeCache();
 		UpdateAttributesFull(pPlayer);
 	}
 }
-
 
 void CInventoryListener::OnPlayerEquipItem(CPlayer* pPlayer, CPlayerItem* pItem)
 {
@@ -121,12 +91,49 @@ void CInventoryListener::OnPlayerUnequipItem(CPlayer* pPlayer, CPlayerItem* pIte
 	UpdateAttributesForItem(pPlayer, pItem);
 }
 
-
 void CInventoryListener::OnPlayerEnchantItem(CPlayer* pPlayer, CPlayerItem* pItem)
 {
 	UpdateAttributesForItem(pPlayer, pItem);
 }
 
+void CInventoryListener::OnPlayerChangePreset(CPlayer* pPlayer, int PresetSlotIndex)
+{
+	if (pPlayer)
+	{
+		pPlayer->InvalidateAttributeCache();
+		UpdateAttributesFull(pPlayer);
+	}
+}
+
+void CInventoryListener::OnCharacterSpawn(CPlayer* pPlayer)
+{
+	UpdateAttributesFull(pPlayer);
+}
+
+void CInventoryListener::OnCharacterDamage(CPlayer* pFrom, CPlayer* pTo, int Damage)
+{
+	if (!pFrom || !pTo || Damage <= 0)
+		return;
+
+	auto* pGS = pFrom->GS();
+
+	// Module: Reflects 10% of taken damage back
+	if (pTo->GetItem(itMirrorOfPain)->IsEquipped() && pFrom->GetCharacter() && pTo->GetCharacter())
+	{
+		auto* pTargetChar = pFrom->GetCharacter();
+		auto* pFromChar = pTo->GetCharacter();
+		const vec2 Direction = length(pFromChar->GetPos() - pTargetChar->GetPos()) > 0.0f
+			? normalize(pFromChar->GetPos() - pTargetChar->GetPos()) : vec2(0.0f, -1.0f);
+		const vec2 Force = vec2(0.0f, -1.0f) + normalize(Direction + vec2(0.0f, -1.1f)) * 10.0f;
+		const auto reflectedDamage = maximum(1, round_to_int(Damage * 0.10f));
+		auto* pPoint = new CEntityFlyingPoint(&pGS->m_World, pTo->GetCharacter()->GetPos(), {}, pFrom->GetCID(), pTo->GetCID());
+		pPoint->Register([pGS, Force, reflectedDamage](CPlayer* pFrom, CPlayer* pPlayer)
+			{
+				pGS->CreateDamage(pPlayer->GetCharacter()->GetPos(), pFrom->GetCID(), reflectedDamage, 0.f, -1);
+				pPlayer->GetCharacter()->TakeDamage({}, reflectedDamage, pFrom->GetCID(), WEAPON_SELF);
+			});
+	}
+}
 
 void CInventoryListener::UpdateAttributesForItem(CPlayer* pPlayer, CPlayerItem* pItem)
 {
