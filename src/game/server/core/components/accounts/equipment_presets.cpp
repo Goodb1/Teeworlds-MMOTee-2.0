@@ -204,9 +204,10 @@ bool EquipmentPresets::Delete(int SlotIndex)
 		return false;
 	}
 
+	const std::string RemovedName = pPreset->Name;
 	if (deletePresetImpl(SlotIndex))
 	{
-		GS()->Chat(m_ClientID, "Equipment preset '{}' deleted from slot {}", pPreset->Name, SlotIndex + 1);
+		GS()->Chat(m_ClientID, "Equipment preset '{}' deleted from slot {}", RemovedName, SlotIndex + 1);
 		pPlayer->Account()->SaveEquipmentPresets();
 		pPlayer->m_VotesData.UpdateCurrentVotes();
 	}
