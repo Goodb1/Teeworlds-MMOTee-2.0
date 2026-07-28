@@ -335,7 +335,7 @@ void CCraftManager::ShowGroupedSelector(CPlayer* pPlayer) const
 	const auto& subgroupIdOpt = pPlayer->m_SubgroupFilter;
 
 	// show selector by group
-	VoteWrapper VSG(ClientID, VWF_SEPARATE_OPEN | VWF_STYLE_STRICT_BOLD, "\u2692 Crafting List");
+	VoteWrapper VSG(ClientID, VWF_SEPARATE | VWF_ALIGN_TITLE | VWF_STYLE_STRICT, "\u2692 Crafting List");
 	for(const auto& [groupName, subGroupMap] : allGroupData)
 	{
 		const auto GroupID = pPlayer->m_VotesData.GetStringMapper().string_to_id(groupName);
@@ -343,6 +343,9 @@ void CCraftManager::ShowGroupedSelector(CPlayer* pPlayer) const
 		const auto countItemByGroup = groupedTradesContainer.get_item_group_count(groupName);
 		VSG.AddOption("WAREHOUSE_SELECTOR_GROUP", GroupID, "{}({}){SELECTOR}", Instance::Localize(ClientID, groupName.c_str()), countItemByGroup, pSelectStr);
 	}
+	VSG.Sort([](const CVoteOption& o1, const CVoteOption& o2)
+		{ return std::string_view(o1.m_aDescription) < std::string_view(o2.m_aDescription); });
+	VoteWrapper::AddEmptyline(ClientID);
 
 	// show selector by subgroup
 	if(groupIdOpt)
@@ -361,13 +364,16 @@ void CCraftManager::ShowGroupedSelector(CPlayer* pPlayer) const
 
 		if(!HasOnlyDefaultGroup)
 		{
-			VSG.AddLine();
+			VoteWrapper VSGSub(ClientID, VWF_SEPARATE | VWF_ALIGN_TITLE | VWF_STYLE_STRICT, "\u2692 {}", groupNameOpt.value());
 			for(const auto& [subGroupName, itemList] : *pSubGroupMap)
 			{
 				const auto SubgroupID = pPlayer->m_VotesData.GetStringMapper().string_to_id(subGroupName);
 				const char* pSelectStr = GetSelectorStringByCondition(subgroupIdOpt && (*subgroupIdOpt) == SubgroupID);
-				VSG.AddOption("WAREHOUSE_SELECTOR_SUBGROUP", SubgroupID, "{}({}){SELECTOR}", subGroupName.c_str(), itemList.size(), pSelectStr);
+				VSGSub.AddOption("WAREHOUSE_SELECTOR_SUBGROUP", SubgroupID, "{}({}){SELECTOR}", subGroupName.c_str(), itemList.size(), pSelectStr);
+				VSGSub.SetSortPriority(std::isdigit(static_cast<unsigned char>(subGroupName[0])) ? std::atoi(subGroupName.c_str()) : 0);
 			}
+			VSGSub.Sort([](const CVoteOption& o1, const CVoteOption& o2)
+				{ return o1.m_SortPriority < o2.m_SortPriority; });
 		}
 		else
 		{
