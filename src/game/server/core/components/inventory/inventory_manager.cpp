@@ -812,7 +812,7 @@ void CInventoryManager::ShowPlayerModules(CPlayer* pPlayer)
 		if(Item.IsEquipped())
 		{
 			SortPriority = !HasAttrs ? 1 : 0;
-			VCollected.Add(HasAttrs ? "\u2022 {}" : "\u2022 {~}", pDescription).SetSortPriority(SortPriority);
+			VCollected.Add(HasAttrs ? "\u2022 {}" : "\u2022 {}", pDescription).SetSortPriority(SortPriority);
 			HasAttrs ? equippedStats++ : equippedFunc++;
 		}
 	}
