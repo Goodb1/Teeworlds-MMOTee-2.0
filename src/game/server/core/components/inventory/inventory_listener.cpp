@@ -40,12 +40,9 @@ void CInventoryListener::OnCharacterDamage(CPlayer* pFrom, CPlayer* pTo, int Dam
 	// Module: Reflects 10% of taken damage back
 	if (pTo->GetItem(itMirrorOfPain)->IsEquipped() && pFrom->GetCharacter())
 	{
-		if (Chance Reflect(10.f); Reflect())
-		{
-			const auto reflectedDamage = maximum(1, round_to_int(Damage * 0.10f));
-			pGS->CreateDamage(pFrom->GetCharacter()->GetPos(), pTo->GetCID(), reflectedDamage, 0.f, -1);
-			pFrom->GetCharacter()->TakeDamage({}, reflectedDamage, pTo->GetCID(), WEAPON_SELF);
-		}
+		const auto reflectedDamage = maximum(1, round_to_int(Damage * 0.10f));
+		pGS->CreateDamage(pFrom->GetCharacter()->GetPos(), pTo->GetCID(), reflectedDamage, 0.f, -1);
+		pFrom->GetCharacter()->TakeDamage({}, reflectedDamage, pTo->GetCID(), WEAPON_SELF);
 	}
 }
 
