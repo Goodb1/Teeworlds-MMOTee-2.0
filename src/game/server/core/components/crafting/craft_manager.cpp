@@ -233,15 +233,13 @@ void CCraftManager::ShowCraftItem(CPlayer* pPlayer, CCraftItem* pCraft) const
 	// add craft reciepts
 	VoteWrapper VCraftRequired(ClientID, VWF_SEPARATE_OPEN | VWF_STYLE_STRICT, "Required items", pCraftItemInfo->GetName());
 	{
-		VCraftRequired.BeginDepth();
-
 		// required gold
 		int CraftPrice = pCraft->GetPrice(pPlayer);
 		if(CraftPrice > 0)
 		{
 			auto playerGold = pPlayer->Account()->GetTotalGold();
 			bool hasEnoughGold = pPlayer->Account()->GetTotalGold() >= CraftPrice;
-			VCraftRequired.MarkList().Add("{} Gold x{$} ({$})", hasEnoughGold ? "\u2714" : "\u2718", CraftPrice, playerGold);
+			VCraftRequired.BeginDepth().Add("{} Gold x{$} ({$})", hasEnoughGold ? "\u2714" : "\u2718", CraftPrice, playerGold).EndDepth();
 		}
 
 		// requied items
@@ -254,18 +252,22 @@ void CCraftManager::ShowCraftItem(CPlayer* pPlayer, CCraftItem* pCraft) const
 			// is clickable craft
 			if (pCraftIngredient)
 			{
-				VCraftRequired.MarkList().AddMenu(MENU_CRAFTING_SELECT, pCraftIngredient->GetID(), "{} {} x{} ({}) →", 
+				VCraftRequired.AddMenu(MENU_CRAFTING_SELECT, pCraftIngredient->GetID(), "{} {} x{} ({}) →", 
 					hasEnoughItems ? "\u2714" : "\u2718", pRequiredItem.Info()->GetName(), pRequiredItem.GetValue(), pPlayerItem->GetValue());
+
 			}
 			else
 			{
-				VCraftRequired.MarkList().Add("{} {} x{} ({})", hasEnoughItems ? "\u2714" : "\u2718",
-					pRequiredItem.Info()->GetName(), pRequiredItem.GetValue(), pPlayerItem->GetValue());
+				VCraftRequired.BeginDepth().Add("{} {} x{} ({})", hasEnoughItems ? "\u2714" : "\u2718",
+					pRequiredItem.Info()->GetName(), pRequiredItem.GetValue(), pPlayerItem->GetValue()).EndDepth();
 			}
 			if (SourceView)
-				VCraftRequired.Add("  ↳ source: \"{~}\"", ItemHelper::BuildSourceHint(GS(), pRequiredItem.GetID()));
+			{
+				VCraftRequired.BeginDepth().BeginDepth().BeginDepth();
+				VCraftRequired.Add("↳ {~}", ItemHelper::BuildSourceHint(GS(), pRequiredItem.GetID()));
+				VCraftRequired.EndDepth().EndDepth().EndDepth();
+			}
 		}
-		VCraftRequired.EndDepth();
 	}
 	VoteWrapper::AddEmptyline(ClientID);
 
