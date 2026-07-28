@@ -13,6 +13,7 @@ void CInventoryListener::Initialize()
 	g_EventListenerManager.RegisterListener(IEventListener::PlayerProfessionUpgrade, this);
 	g_EventListenerManager.RegisterListener(IEventListener::PlayerProfessionChange, this);
 	g_EventListenerManager.RegisterListener(IEventListener::PlayerEquipItem, this);
+	g_EventListenerManager.RegisterListener(IEventListener::PlayerGotItem, this);
 	g_EventListenerManager.RegisterListener(IEventListener::PlayerUnequipItem, this);
 	g_EventListenerManager.RegisterListener(IEventListener::PlayerEnchantItem, this);
 	g_EventListenerManager.RegisterListener(IEventListener::PlayerDurabilityItem, this);
@@ -35,6 +36,26 @@ void CInventoryListener::OnPlayerLogin(CPlayer* pPlayer, CAccountData* pAccount)
 
 	pAccount->AutoEquipSlots(true);
 	pPlayer->InvalidateAttributeCache();
+}
+
+void CInventoryListener::OnPlayerGotItem(CPlayer* pPlayer, CPlayerItem* pItem, int Got)
+{
+	if (!pPlayer || !pItem)
+		return;
+	
+	auto* pGS = pPlayer->GS();
+
+	// Trash resources may turn into materials
+	if(pItem->GetID() == itTrash)
+	{
+		const int TrashValue = pItem->GetValue();
+		auto* pLuckySieve = pPlayer->GetItem(itLuckySieve);
+		if (pLuckySieve->IsEquipped() && pItem->Remove(TrashValue))
+		{
+			pPlayer->GetItem(itMaterial)->Add(TrashValue);
+			pGS->Chat(pPlayer->GetCID(), "Your trash has been processed by the Lucky Sieve and turned into materials!");
+		}
+	}
 }
 
 

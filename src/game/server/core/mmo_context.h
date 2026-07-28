@@ -685,6 +685,7 @@ enum
 	itCapsuleSurvivalExperience    = 16,    // Gives 10-50 experience
 	itLittleBagGold                = 17,    // Gives 10-50 gold
 	itPackCigarettes               = 256,   // Pack of cigarettes for reduce jail time
+	itTrash                        = 124,   // Trash item
 
 	// potions
 	itPotionManaRegen              = 14,    // Mana regeneration potion
@@ -724,6 +725,8 @@ enum
 	itRingGivingLightning          = 403,   // Lightning on attack with some probability
 	itRingPerfectLightning         = 404,   // Reflects and attacks with lightning at some chance
 	itTeslaInductiveCoil           = 405,   // Increases electro damage by 25%
+	itPortableAnvil                = 480,   // Repair equipment anywhere (uses materials)
+	itLuckySieve                   = 481,   // Trash resources may turn into materials
 
 	// reset upgrades tomes
 	itTomeOfUpgrResetTank          = 399,   // Reset upgrade for Tank
