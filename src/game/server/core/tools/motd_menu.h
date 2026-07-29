@@ -11,6 +11,7 @@ enum MotdMenuFlags
 	// motd menu flags
 	MTFLAG_CLOSE_BUTTON    = 1 << 0,
 	MTFLAG_CLOSE_ON_SELECT = 1 << 1,
+	MTFLAG_ALWAYS_UPDATE   = 1 << 2,
 
 	// motd input flags
 	MTTEXTINPUTFLAG_ONLY_NUMERIC = 1 << 0,

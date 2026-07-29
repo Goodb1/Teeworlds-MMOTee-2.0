@@ -6,6 +6,8 @@
 #include <game/server/gamecontext.h>
 #include <generated/server_data.h>
 
+#include <entities/casino/dice_duel_game.h>
+#include <game/server/worldmodes/default.h>
 
 #include <game/server/core/components/inventory/inventory_manager.h>
 #include <game/server/core/components/mails/mailbox_manager.h>
@@ -18,7 +20,7 @@ constexpr int LENGTH_LOGPASS_MAX = 12;
 constexpr int LENGTH_LOGPASS_MIN = 4;
 constexpr int LENGTH_PIN_MAX = 6;
 constexpr int LENGTH_PIN_MIN = 4;
-constexpr int AUTH_FIELD_LOGIN = 0;
+constexpr int BET_FIELD_AMOUNT = 0;
 constexpr int AUTH_FIELD_PASSWORD = 1;
 
 namespace
@@ -823,6 +825,7 @@ void CAccountManager::OnCharacterTile(CCharacter* pChr)
 	int ClientID = pPlayer->GetCID();
 
 	HANDLE_TILE_MOTD_MENU(pPlayer, pChr, TILE_BANK_MANAGER, MOTD_MENU_BANK_MANAGER)
+	HANDLE_TILE_MOTD_MENU(pPlayer, pChr, TILE_CASINO_DICE, MOTD_MENU_CASINO_DICE)
 
 	// selector language by action tile
 	const auto TrySelectLanguageInActionZone = [&](const char* pActionZone, const char* pLanguageFile, const char* pLanguageName)
@@ -1004,11 +1007,118 @@ bool CAccountManager::OnSendMenuMotd(CPlayer* pPlayer, int Menulist)
 		return true;
 	}
 
+	// motd menu casino dice
+	if (Menulist == MOTD_MENU_CASINO_DICE)
+	{
+		auto* pController = dynamic_cast<CGameControllerDefault*>(GS()->m_pController);
+		if (!pController)
+			return true;
+
+		CDiceDuelGame* pTable = pController->GetDiceDuelGameInRange(pPlayer->m_ViewPos);
+		if (!pTable)
+			return true;
+
+		int TimeLeft = (pTable->GetTicksLeft() / Server()->TickSpeed());
+		const auto* pCurrency = pPlayer->GetItem(pPlayer->m_CurrencyCasinoDiceItemID);
+		MotdMenu MCasino(ClientID, MTFLAG_ALWAYS_UPDATE, "Here you can play the dice game. You can bet gold and try your luck. The more you bet, the higher your chances of winning.");
+		MCasino.AddText("Casino Dice \u2696");
+		MCasino.AddSeparateLine();
+		
+		// bet currency and amount
+		MCasino.AddText("Enter the amount bet");
+		MCasino.AddMenu(MOTD_MENU_CASINO_DICE_CURRENCY_SELECT, NOPE, "{} ({$})", pCurrency->Info()->GetName(), 
+			pCurrency->GetID() == itGold ? pPlayer->Account()->GetTotalGold() : pCurrency->GetValue());
+		MCasino.AddField(BET_FIELD_AMOUNT, MTTEXTINPUTFLAG_ONLY_NUMERIC);
+		MCasino.AddSeparateLine();
+		
+		// information about the game state
+		if(TimeLeft > 0 && pTable->GetState() == EDiceGameState::LOBBY)
+			MCasino.AddText("Start rolling: {} sec.", TimeLeft);
+		else if (pTable->GetState() == EDiceGameState::ROLLING)
+			MCasino.AddText("Rolling the dice.");
+		else if (pTable->GetState() == EDiceGameState::SHOW_RESULT)
+			MCasino.AddText("Waiting to start round.");
+		else
+			MCasino.AddText("Waiting for players.");
+
+		// bet or leave
+		if(pTable->IsPlayerJoined(pPlayer->GetCID()))
+			MCasino.AddOption("DICE_BET_LEAVE", "Leave the game");
+		else
+		{
+			MCasino.AddOption("DICE_BET_ENTER", "Bet on High (8-12)").Pack(EDiceBetType::HIGH, 7);
+			MCasino.AddOption("DICE_BET_ENTER", "Bet on Equal (7)").Pack(EDiceBetType::EQUAL, 7);
+			MCasino.AddOption("DICE_BET_ENTER", "Bet on Low (2-6)").Pack(EDiceBetType::LOW, 7);
+		}
+		MCasino.Send(MOTD_MENU_CASINO_DICE);
+		return true;
+	}
+
+	if (Menulist == MOTD_MENU_CASINO_DICE_CURRENCY_SELECT)
+	{
+		MotdMenu MCasino(ClientID, MTFLAG_ALWAYS_UPDATE, "Here you can play the dice game. You can bet gold and try your luck. The more you bet, the higher your chances of winning.");
+		for(auto& [ItemID, ItemData] : CPlayerItem::Data()[ClientID])
+		{
+			if(ItemData.Info()->IsGroup(ItemGroup::Currency))
+			{
+				MCasino.AddOption("DICE_CURRENCY_SELECT", "{} ({$})", ItemData.Info()->GetName(), 
+					(ItemID == itGold ? pPlayer->Account()->GetTotalGold() : ItemData.GetValue())).Pack(ItemID);
+			}
+		}
+		MCasino.AddBackpage();
+		MCasino.Send(MOTD_MENU_CASINO_DICE_CURRENCY_SELECT);
+		return true;
+	}
+
 	return false;
 }
 
 bool CAccountManager::OnPlayerMotdCommand(CPlayer* pPlayer, CMotdPlayerData* pMotdData, const char* pCmd)
 {
+	// dice bet currency select
+	if (strcmp(pCmd, "DICE_CURRENCY_SELECT") == 0)
+	{
+		const auto& [ItemID] = pMotdData->GetCurrent()->Unpack<int>();
+		pPlayer->m_CurrencyCasinoDiceItemID = ItemID;
+		GS()->SendMenuMotd(pPlayer, MOTD_MENU_CASINO_DICE);
+		return true;
+	}
+
+	// dice bet high
+	if (strcmp(pCmd, "DICE_BET_ENTER") == 0)
+	{
+		const auto Bet = pMotdData->GetFieldStr(BET_FIELD_AMOUNT);
+		if(!Bet.has_value())
+		{
+			GS()->Chat(pPlayer->GetCID(), "Please enter a bet amount.");
+			return true;
+		}
+
+		const auto& [BetType, Threshold] = pMotdData->GetCurrent()->Unpack<EDiceBetType, int>();
+		const auto BetAmount = std::stoi(Bet.value());
+		auto* pController = dynamic_cast<CGameControllerDefault*>(GS()->m_pController);
+		if (pController)
+		{
+			CDiceDuelGame* pTable = pController->GetDiceDuelGameInRange(pPlayer->m_ViewPos);
+			if (!pTable || !pTable->Join(pPlayer->GetCID(), BetAmount, BetType, Threshold))
+				GS()->Chat(pPlayer->GetCID(), "Failed to join the dice game. Please check your gold and try again.");
+		}
+		return true;
+	}
+
+	// dice bet leave
+	if (strcmp(pCmd, "DICE_BET_LEAVE") == 0)
+	{
+		auto* pController = dynamic_cast<CGameControllerDefault*>(GS()->m_pController);
+		if(!pController)
+			return true;
+
+		CDiceDuelGame* pTable = pController->GetDiceDuelGameInRange(pPlayer->m_ViewPos);
+		if(pTable && pTable->Leave(pPlayer->GetCID()))
+			GS()->Chat(pPlayer->GetCID(), "You have left the dice game.");
+		return true;
+	}
+
 	// deposit bank gold
 	if(strcmp(pCmd, "BANK_DEPOSIT") == 0)
 	{

@@ -6,6 +6,7 @@
 #include <game/server/core/entities/logic/logicwall.h>
 
 #include "game/server/entities/pickup.h"
+#include "game/server/core/entities/casino/dice_duel_game.h"
 #include "game/server/core/entities/logic/botwall.h"
 #include "game/server/core/entities/items/gathering_node.h"
 #include "game/server/core/entities/items/money_bag.h"
@@ -23,6 +24,26 @@ CGameControllerDefault::CGameControllerDefault(CGS* pGS)
 	m_GameFlags = 0;
 	m_vMoneyBags.reserve(MAX_MONEY_BAGS_ON_WORLD);
 	m_MoneyBagTick = Server()->Tick() + (Server()->TickSpeed() * g_Config.m_SvGenerateMoneyBagPerMinute * 60);
+}
+
+CGameControllerDefault::~CGameControllerDefault()
+{
+	for (auto* pMoneyBag : m_vMoneyBags)
+	{
+		if (pMoneyBag)
+			pMoneyBag->MarkForDestroy();
+	}
+	m_vMoneyBags.clear();
+
+	for (auto* pDiceDuelGame : m_vDiceDuelGames)
+	{
+		if (pDiceDuelGame)
+		{
+			delete pDiceDuelGame;
+			pDiceDuelGame = nullptr;
+		}
+	}
+	m_vDiceDuelGames.clear();
 }
 
 void CGameControllerDefault::OnCharacterDamage(CPlayer* pFrom, CPlayer* pTo, int Damage)
@@ -174,6 +195,40 @@ void CGameControllerDefault::OnEntity(int Index, vec2 Pos, int Flags)
 				pFarmzone->Add(GS(), newPos);
 		}
 	}
+
+	else if (Index == ENTITY_CASINO_DICE)
+	{
+		auto* pCasinoTable = new CDiceDuelGame(GS(), Pos, 8 * Server()->TickSpeed(), 2 * Server()->TickSpeed());
+		pCasinoTable->SetOnJoin([this](int ClientID, const CDiceDuelGame::SlotBet& slotBet) 
+		{
+			const char* pCurrencyName = GS()->GetItemInfo(slotBet.m_Currency)->GetName();
+			GS()->Chat(ClientID, "{~} bet '{} ({$})' for {} {}", Server()->ClientName(ClientID), 
+				pCurrencyName, slotBet.m_Bet, CDiceDuelGame::BetTypeName(slotBet.m_Type), slotBet.m_Threshold);
+		});
+
+		pCasinoTable->SetOnLeave([this](int ClientID, const CDiceDuelGame::SlotBet& slotBet) 
+		{
+			const char* pCurrencyName = GS()->GetItemInfo(slotBet.m_Currency)->GetName();
+			GS()->Chat(ClientID, "{~} leave. Bet '{} ({$})'", Server()->ClientName(ClientID), pCurrencyName, slotBet.m_Bet);
+		});
+
+		pCasinoTable->SetOnFinished([this](const CDiceDuelGame::DiceResult& r) 
+		{
+			for (const auto& slotBet : r.m_vPlayers)
+			{
+				const char* pCurrencyName = GS()->GetItemInfo(slotBet.m_Currency)->GetName();
+				if (slotBet.m_Win)
+				{
+					GS()->Chat(slotBet.m_ClientID, "Win: {} ({$})", pCurrencyName, slotBet.m_Payout);
+					GS()->Chat(-1, "[Casino Dice] {~} won '{} ({$})'.", Server()->ClientName(slotBet.m_ClientID), pCurrencyName, slotBet.m_Payout);
+				}
+				else
+					GS()->Chat(slotBet.m_ClientID, "Lose: {} ({$})", pCurrencyName, slotBet.m_Bet);
+			}
+		});
+
+		m_vDiceDuelGames.push_back(pCasinoTable);
+	}
 }
 
 void CGameControllerDefault::OnEntitySwitch(int Index, vec2 Pos, int Flags, int Number)
@@ -241,6 +296,12 @@ void CGameControllerDefault::OnPlayerDisconnect(CPlayer* pPlayer)
 
 void CGameControllerDefault::Tick()
 {
+	for (auto* pDiceDuelGame : m_vDiceDuelGames)
+	{
+		if (pDiceDuelGame)
+			pDiceDuelGame->Tick();
+	}
+
 	TryGenerateMoneyBag();
 	IGameController::Tick();
 }
@@ -278,4 +339,15 @@ void CGameControllerDefault::TryGenerateMoneyBag()
 
 		m_MoneyBagTick = Server()->Tick() + (Server()->TickSpeed() * g_Config.m_SvGenerateMoneyBagPerMinute * 60);
 	}
+}
+
+CDiceDuelGame* CGameControllerDefault::GetDiceDuelGameInRange(vec2 Pos) const
+{
+	for (auto* pDiceDuelGame : m_vDiceDuelGames)
+	{
+		if (!pDiceDuelGame || distance(pDiceDuelGame->GetPos(), Pos) >= 800.f)
+			continue;
+		return pDiceDuelGame;
+	}
+	return nullptr;
 }

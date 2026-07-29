@@ -6,14 +6,17 @@
 #include <game/server/gamecontroller.h>
 
 class CEntityMoneyBag;
+class CDiceDuelGame;
 class CGameControllerDefault : public IGameController
 {
 	int m_MoneyBagTick{};
 	PathRequestHandle m_PathMoneyBag{};
 	std::vector<CEntityMoneyBag*> m_vMoneyBags{};
+	std::vector<CDiceDuelGame*> m_vDiceDuelGames{};
 
 public:
 	CGameControllerDefault(class CGS *pGameServer);
+	~CGameControllerDefault() override;
 
 	void OnCharacterDamage(class CPlayer* pFrom, class CPlayer* pTo, int Damage) override;
 	void OnCharacterDeath(class CPlayer* pVictim, class CPlayer* pKiller, int Weapon) override;
@@ -27,5 +30,7 @@ public:
 	void Tick() override;
 
 	void TryGenerateMoneyBag();
+
+	CDiceDuelGame* GetDiceDuelGameInRange(vec2 Pos) const;
 };
 #endif

@@ -163,6 +163,7 @@ void MotdMenu::Tick()
 	}
 
 	// add menu items to buffer
+	bool updatedMotd = false;
 	int i = motdData.m_ScrollManager.GetScrollPos();
 	for(; i < motdData.m_ScrollManager.GetEndScrollPos() && i < static_cast<int>(m_Points.size()); ++i, ++linePos)
 	{
@@ -170,11 +171,14 @@ void MotdMenu::Tick()
 		ApplyScrollbar(pPlayer, i, buffer);
 
 		// initialize variables
-		bool updatedMotd = false;
 		const int checkYStart = startLineY + linePos * lineSizeY;
 		const int checkYEnd = startLineY + (linePos + 1) * lineSizeY;
 		const bool isSelected = (targetX > -196 && targetX < 196 && targetY >= checkYStart && targetY < checkYEnd);
 		const bool isClicked = isInMenuArea && pServer->Input()->IsKeyClicked(m_ClientID, KEY_EVENT_FIRE);
+
+		// always update
+		if (m_Flags & MTFLAG_ALWAYS_UPDATE && pServer->Tick() % pServer->TickSpeed() == 0)
+			updatedMotd = true;
 
 		// empty command only text
 		auto& option = m_Points[i];

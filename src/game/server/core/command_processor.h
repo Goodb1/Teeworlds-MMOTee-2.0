@@ -17,6 +17,7 @@ class CCommandProcessor
 	static void ConChatGuild(IConsole::IResult* pResult, void* pUserData);
 	static void ConChatHouse(IConsole::IResult* pResult, void* pUserData);
 	static void ConChatPreset(IConsole::IResult* pResult, void* pUserData);
+	static void ConChatDice(IConsole::IResult* pResult, void* pUserData);
 	static void ConGroup(IConsole::IResult* pResult, void* pUser);
 	static void ConChatUseItem(IConsole::IResult* pResult, void* pUserData);
 	static void ConChatUseSkill(IConsole::IResult* pResult, void* pUserData);

@@ -9,6 +9,9 @@
 #include <components/houses/entities/house_door.h>
 #include <game/server/gamecontext.h>
 
+#include <entities/casino/dice_duel_game.h>
+#include <game/server/worldmodes/default.h>
+
 #include <generated/version.h>
 
 static bool is_valid_player(CGS* pGS, CPlayer* pPlayer, bool RequiredAuth)
@@ -45,6 +48,8 @@ CCommandProcessor::CCommandProcessor(CGS* pGS)
 	AddCommand("use_item", "i[item]", ConChatUseItem, pServer, "Use an item");
 	AddCommand("use_skill", "i[skill]", ConChatUseSkill, pServer, "Use a skill");
 	AddCommand("voucher", "r[voucher]", ConChatVoucher, pServer, "Activate a voucher");
+	AddCommand("dice", "?s[elem] ?s[subelem] ?i[sum]", ConChatDice, pServer,
+		"Dice game: /dice | /dice info | /dice leave | /dice <bet> <high|low|equal> <T>");
 
 	// information commands
 	AddCommand("cmdlist", "?i[page]", ConChatCmdList, pServer, "Display the list of available commands");
@@ -164,6 +169,111 @@ void CCommandProcessor::ConChatRegister(IConsole::IResult* pResult, void* pUser)
 	pGS->Core()->AccountManager()->RegisterAccount(ClientID, pUsername, pPassword);
 }
 
+void CCommandProcessor::ConChatDice(IConsole::IResult* pResult, void* pUser)
+{
+	const int ClientID = pResult->GetClientID();
+	auto* pGS = GetCommandResultGameServer(ClientID, pUser);
+	auto* pPlayer = pGS->GetPlayer(ClientID);
+	if (!is_valid_player(pGS, pPlayer, true))
+		return;
+
+	auto* pChar = pPlayer->GetCharacter();
+	if (!pChar)
+	{
+		pGS->Chat(ClientID, "You must be alive to play dice.");
+		return;
+	}
+
+	// get the nearest dice table on the map
+	auto* pController = dynamic_cast<CGameControllerDefault*>(pGS->m_pController);
+	if (!pController)
+		return;
+
+	CDiceDuelGame* pTable = pController->GetDiceDuelGameInRange(pPlayer->m_ViewPos);
+	if (!pTable)
+	{
+		pGS->Chat(ClientID, "There are no dice tables on this map.");
+		return;
+	}
+
+	// if the command element is "leave", leave the lobby
+	const std::string pElem = pResult->GetString(0);
+	if (pElem.compare(0, 5, "leave") == 0)
+	{
+		int Refund = 0;
+		if (pTable->Leave(ClientID, &Refund))
+			pGS->Chat(ClientID, "You left the lobby. Refund: {$}", Refund);
+		else
+			pGS->Chat(ClientID, "You are not in the lobby, or the roll already started.");
+		return;
+	}
+
+	// if the command element is a bet, try to place it
+	const int Bet = str_toint(pElem.c_str());
+	if (Bet > 0)
+	{
+		if (pResult->NumArguments() < 3)
+		{
+			pGS->Chat(ClientID, "Usage: /dice <bet> <high|low|equal> <T>");
+			return;
+		}
+
+		// parse bet type
+		const std::string pTypeStr = pResult->GetString(1);
+		EDiceBetType Type;
+		if (pTypeStr.compare(0, 4, "high") == 0 || pTypeStr.compare(0, 1, "h") == 0)
+			Type = EDiceBetType::HIGH;
+		else if (pTypeStr.compare(0, 3, "low") == 0 || pTypeStr.compare(0, 1, "l") == 0)
+			Type = EDiceBetType::LOW;
+		else if (pTypeStr.compare(0, 5, "equal") == 0 || pTypeStr.compare(0, 1, "e") == 0)
+			Type = EDiceBetType::EQUAL;
+		else
+		{
+			pGS->Chat(ClientID, "Bet type must be: 'high | low | equal'.");
+			return;
+		}
+
+		// parse threshold
+		const int Threshold = pResult->GetInteger(2);
+		if (!CDiceDuelGame::IsValidThreshold(Type, Threshold))
+		{
+			pGS->Chat(ClientID, "Invalid threshold. HIGH '2..11', LOW '3..12', EQUAL '2..12'.");
+			return;
+		}
+
+		// state check
+		if (pTable->GetState() != EDiceGameState::LOBBY)
+		{
+			pGS->Chat(ClientID, "The roll is already in progress. Wait for the next lobby.");
+			return;
+		}
+
+		// join lobby
+		pPlayer->m_CurrencyCasinoDiceItemID = itGold;
+		if (!pTable->Join(ClientID, Bet, Type, Threshold))
+		{
+			pPlayer->Account()->AddGold(Bet);
+			pGS->Chat(ClientID, "Failed to join the lobby (already joined?).");
+			return;
+		}
+
+		const float Chance = CDiceDuelGame::GetWinProbability(Type, Threshold) * 100.0f;
+		const int Payout = CDiceDuelGame::CalcPayout(Bet, Type, Threshold);
+		const int SecLeft = pTable->GetTicksLeft() / pGS->Server()->TickSpeed();
+		pGS->Chat(ClientID, "Bet {$} on {} {}. Chance {~.2}%, payout {$}.",
+			Bet, CDiceDuelGame::BetTypeName(Type), Threshold);
+		return;
+	}
+
+	// dice command list
+	const char* pStatus = (pTable->GetState() == EDiceGameState::LOBBY
+		? Instance::Localize(ClientID, "lobby is open") : Instance::Localize(ClientID, "roll in progress"));
+	pGS->Chat(ClientID, mystd::aesthetic::boardPillar("Dice system", 7).c_str());
+	pGS->Chat(ClientID, "Current status: '{}'. Players in lobby: {}.", pStatus, pTable->GetPlayersCount());
+	pGS->Chat(ClientID, "/dice <bet> <high|low|equal> <T> - place a bet");
+	pGS->Chat(ClientID, "/dice leave - leave the lobby and refund the bet");
+}
+
 void CCommandProcessor::ConChatGuild(IConsole::IResult* pResult, void* pUser)
 {
 	const int ClientID = pResult->GetClientID();
@@ -213,7 +323,6 @@ void CCommandProcessor::ConChatGuild(IConsole::IResult* pResult, void* pUser)
 	pGS->Chat(ClientID, mystd::aesthetic::boardPillar("Guild system", 7).c_str());
 	pGS->Chat(ClientID, "/guild create <name> - create a new guild");
 	pGS->Chat(ClientID, "/guild leave - leave the guild");
-
 }
 
 void CCommandProcessor::ConChatPreset(IConsole::IResult* pResult, void* pUser)
