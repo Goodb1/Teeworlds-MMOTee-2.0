@@ -1080,6 +1080,7 @@ bool CAccountManager::OnPlayerMotdCommand(CPlayer* pPlayer, CMotdPlayerData* pMo
 	{
 		const auto& [ItemID] = pMotdData->GetCurrent()->Unpack<int>();
 		pPlayer->m_CurrencyCasinoDiceItemID = ItemID;
+		pPlayer->CloseMotdMenu();
 		GS()->SendMenuMotd(pPlayer, MOTD_MENU_CASINO_DICE);
 		return true;
 	}
