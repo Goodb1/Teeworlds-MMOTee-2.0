@@ -259,9 +259,8 @@ void CCommandProcessor::ConChatDice(IConsole::IResult* pResult, void* pUser)
 
 		const float Chance = CDiceDuelGame::GetWinProbability(Type, Threshold) * 100.0f;
 		const int Payout = CDiceDuelGame::CalcPayout(Bet, Type, Threshold);
-		const int SecLeft = pTable->GetTicksLeft() / pGS->Server()->TickSpeed();
 		pGS->Chat(ClientID, "Bet {$} on {} {}. Chance {~.2}%, payout {$}.",
-			Bet, CDiceDuelGame::BetTypeName(Type), Threshold);
+			Bet, CDiceDuelGame::BetTypeName(Type), Threshold, Chance, Payout);
 		return;
 	}
 
