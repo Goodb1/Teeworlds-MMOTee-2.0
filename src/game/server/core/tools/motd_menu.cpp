@@ -412,7 +412,8 @@ void MotdMenu::UpdateMotd()
 		const auto oldMenuExtra = m_MenuExtra;
 		m_ResendMotdTick = pServer->Tick() + pServer->TickSpeed();
 		GS()->SendMenuMotd(pPlayer, m_Menulist);
-		pPlayer->m_pMotdMenu->m_MenuExtra = oldMenuExtra;
+		if(pPlayer->m_pMotdMenu)
+			pPlayer->m_pMotdMenu->m_MenuExtra = oldMenuExtra;
 	}
 }
 
