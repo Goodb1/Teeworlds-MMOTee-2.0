@@ -1,13 +1,12 @@
-#include "dice_laser.h"
+#include "entities/dice_laser.h"
 #include "dice_duel_game.h"
 
-#include <components/mails/mail_wrapper.h>
 #include <game/server/gamecontext.h>
 #include <game/server/player.h>
 
-static int Combos(int s) 
-{ 
-	return (s < 2 || s > 12) ? 0 : (s <= 7 ? s - 1 : 13 - s); 
+static int Combos(int s)
+{
+	return (s < 2 || s > 12) ? 0 : (s <= 7 ? s - 1 : 13 - s);
 }
 
 float CDiceDuelGame::GetWinProbability(EDiceBetType Type, int Threshold)
@@ -51,18 +50,18 @@ bool CDiceDuelGame::IsValidThreshold(EDiceBetType Type, int Threshold)
 
 const char* CDiceDuelGame::BetTypeName(EDiceBetType T)
 {
-	switch (T) 
-	{ 
-		case EDiceBetType::HIGH: return "HIGH"; 
-		case EDiceBetType::LOW: return "LOW"; 
-		case EDiceBetType::EQUAL: return "EQUAL"; 
+	switch (T)
+	{
+		case EDiceBetType::HIGH: return "HIGH";
+		case EDiceBetType::LOW: return "LOW";
+		case EDiceBetType::EQUAL: return "EQUAL";
 	}
 
 	return "?";
 }
 
-CDiceDuelGame::CDiceDuelGame(CGS* pGS, vec2 Pos, int LobbyDurationTicks, int ShowResultTicks) 
-	: m_pGS(pGS), m_Pos(Pos)
+CDiceDuelGame::CDiceDuelGame(CGS* pGS, vec2 Pos, int LobbyDurationTicks, int ShowResultTicks)
+	: CCasinoGame(pGS, LobbyDurationTicks, ShowResultTicks), m_pGS(pGS), m_Pos(Pos)
 {
 	m_LobbyDurationTicks = LobbyDurationTicks;
 	m_ShowResultTicks = ShowResultTicks;
@@ -76,9 +75,9 @@ CDiceDuelGame::CDiceDuelGame(CGS* pGS, vec2 Pos, int LobbyDurationTicks, int Sho
 
 CDiceDuelGame::~CDiceDuelGame()
 {
-	for(auto* pDice : m_apDice)
+	for (auto* pDice : m_apDice)
 	{
-		if(pDice)
+		if (pDice)
 			pDice->Destroy();
 	}
 }
@@ -91,7 +90,7 @@ int CDiceDuelGame::GetTicksLeft() const
 void CDiceDuelGame::EnterLobby()
 {
 	m_State = EDiceGameState::LOBBY;
-	m_vPlayers.clear();
+	ClearPlayers();
 	m_aFaces[0] = 0;
 	m_aFaces[1] = 0;
 	m_FinishedDice = 0;
@@ -106,7 +105,7 @@ void CDiceDuelGame::EnterRolling()
 	const int Dur = m_pGS->Server()->TickSpeed() * 3;
 	for (int i = 0; i < 2; i++)
 	{
-		m_apDice[i]->SetOnRollFinished([this, i](int Face) 
+		m_apDice[i]->SetOnRollFinished([this, i](int Face)
 		{
 			m_aFaces[i] = Face;
 			if (++m_FinishedDice >= 2)
@@ -115,21 +114,22 @@ void CDiceDuelGame::EnterRolling()
 				Result.m_Face1 = m_aFaces[0];
 				Result.m_Face2 = m_aFaces[1];
 				Result.m_Sum = Result.m_Face1 + Result.m_Face2;
-				Result.m_vPlayers.reserve(m_vPlayers.size());
+				Result.m_vPlayers.reserve(GetPlayers().size());
 
-				for (auto& slotBet : m_vPlayers)
+				for (auto& slotBet : GetPlayers())
 				{
+					auto betType = static_cast<EDiceBetType>(slotBet.m_Type);
 					slotBet.m_Win =
-						(slotBet.m_Type == EDiceBetType::HIGH && Result.m_Sum > slotBet.m_Threshold) ||
-						(slotBet.m_Type == EDiceBetType::LOW && Result.m_Sum < slotBet.m_Threshold) ||
-						(slotBet.m_Type == EDiceBetType::EQUAL && Result.m_Sum == slotBet.m_Threshold);
-					slotBet.m_Payout = slotBet.m_Win ? CalcPayout(slotBet.m_Bet, slotBet.m_Type, slotBet.m_Threshold) : 0;
-					if(slotBet.m_Win)
+						(betType == EDiceBetType::HIGH && Result.m_Sum > slotBet.m_Threshold) ||
+						(betType == EDiceBetType::LOW && Result.m_Sum < slotBet.m_Threshold) ||
+						(betType == EDiceBetType::EQUAL && Result.m_Sum == slotBet.m_Threshold);
+					slotBet.m_Payout = slotBet.m_Win ? CalcPayout(slotBet.m_Bet, betType, slotBet.m_Threshold) : 0;
+					if (slotBet.m_Win)
 						SettleBet(slotBet);
 					Result.m_vPlayers.push_back(slotBet);
 				}
 
-				if(m_pfnOnFinished) 
+				if (m_pfnOnFinished)
 					m_pfnOnFinished(Result);
 				EnterShowResult();
 			}
@@ -139,8 +139,7 @@ void CDiceDuelGame::EnterRolling()
 	m_apDice[0]->Roll(Dur);
 	m_apDice[1]->Roll(Dur + m_pGS->Server()->TickSpeed() / 4);
 
-	if (m_pfnOnStart) 
-		m_pfnOnStart();
+	NotifyStart();
 }
 
 void CDiceDuelGame::EnterShowResult()
@@ -151,22 +150,7 @@ void CDiceDuelGame::EnterShowResult()
 
 void CDiceDuelGame::PurgeOutOfRange()
 {
-	for (auto it = m_vPlayers.begin(); it != m_vPlayers.end(); )
-	{
-		auto* pPlayer = m_pGS->GetPlayer(it->m_ClientID, true);
-		const bool Alive = pPlayer && pPlayer->GetCharacter();
-
-		if (!Alive)
-		{
-			SettleBet(*it);
-			if (m_pfnOnLeave) 
-				m_pfnOnLeave(it->m_ClientID, *it);
-			it = m_vPlayers.erase(it);
-			continue;
-		}
-		
-		++it;
-	}
+	CCasinoGame::PurgeOutOfRange();
 }
 
 void CDiceDuelGame::Tick()
@@ -177,9 +161,9 @@ void CDiceDuelGame::Tick()
 		{
 			PurgeOutOfRange();
 
-			if (m_vPlayers.empty())
+			if (GetPlayers().empty())
 			{
-				m_StateEndTick = 0;
+			m_StateEndTick = 0;
 				return;
 			}
 
@@ -210,20 +194,11 @@ bool CDiceDuelGame::Join(int ClientID, int Bet, EDiceBetType Type, int Threshold
 	if (!pPlayer || !pPlayer->GetCharacter())
 		return false;
 
-	if (std::any_of(m_vPlayers.begin(), m_vPlayers.end(), [&](const SlotBet& bet) { return bet.m_ClientID == ClientID; }))
+	if (IsPlayerJoined(ClientID))
 		return false;
 
 	const auto Currency = pPlayer->m_CurrencyCasinoDiceItemID;
-	if(!pPlayer->Account()->SpendCurrency(Bet, Currency))
-		return false;
-
-	SlotBet slotBet{ ClientID, pPlayer->Account()->GetID(), Currency, Bet, Type, Threshold };
-	m_vPlayers.push_back(slotBet);
-
-	if (m_pfnOnJoin) 
-		m_pfnOnJoin(ClientID, slotBet);
-	
-	return true;
+	return CCasinoGame::Join(ClientID, Bet, static_cast<int>(Type), Threshold, Currency);
 }
 
 bool CDiceDuelGame::Leave(int ClientID, int* pRefund)
@@ -231,36 +206,5 @@ bool CDiceDuelGame::Leave(int ClientID, int* pRefund)
 	if (m_State != EDiceGameState::LOBBY)
 		return false;
 
-	auto it = std::find_if(m_vPlayers.begin(), m_vPlayers.end(), [&](const SlotBet& b) { return b.m_ClientID == ClientID; });
-	if (it == m_vPlayers.end())
-		return false;
-
-	const int Refund = it->m_Bet;
-	SettleBet(*it);
-
-	SlotBet Copy = *it;
-	m_vPlayers.erase(it);
-	if (m_pfnOnLeave) 
-		m_pfnOnLeave(ClientID, Copy);
-	if (pRefund) 
-		*pRefund = Refund;
-	return true;
-}
-
-void CDiceDuelGame::SettleBet(SlotBet& Bet)
-{
-	const int Value = Bet.m_Win ? Bet.m_Payout : Bet.m_Bet;
-	if (Value <= 0)
-		return;
-
-	if (auto* pPlayer = m_pGS->GetPlayerByUserID(Bet.m_AccountID))
-	{
-		pPlayer->GetItem(Bet.m_Currency)->Add(Value);
-		return;
-	}
-
-	MailWrapper Mail("System", Bet.m_AccountID, "[Casino] Dice");
-	Mail.AddDescLine("Item was not received by you personally.");
-	Mail.AttachItem(CItem(Bet.m_Currency, Value));
-	Mail.Send();
+	return CCasinoGame::Leave(ClientID, pRefund);
 }

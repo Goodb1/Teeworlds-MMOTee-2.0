@@ -1,28 +1,20 @@
-#ifndef GAME_SERVER_CORE_ENTITIES_CASINO_DICE_DUEL_GAME_H
-#define GAME_SERVER_CORE_ENTITIES_CASINO_DICE_DUEL_GAME_H
+#ifndef GAME_SERVER_CORE_CASINO_DICE_DUEL_GAME_H
+#define GAME_SERVER_CORE_CASINO_DICE_DUEL_GAME_H
+
+#include "casino_game.h"
 
 enum class EDiceBetType { HIGH = 0, LOW = 1, EQUAL = 2 };
 enum class EDiceGameState { LOBBY, ROLLING, SHOW_RESULT };
 
 class CGS;
 class CEntityDiceLaser;
-class CDiceDuelGame
+class CDiceDuelGame : public CCasinoGame
 {
 	CGS* m_pGS{};
 	vec2 m_Pos{};
 
 public:
-	struct SlotBet
-	{
-		int m_ClientID{};
-		int m_AccountID{};
-		int m_Currency{};
-		int m_Bet{};
-		EDiceBetType m_Type{};
-		int m_Threshold{};
-		bool m_Win{};
-		int m_Payout{};
-	};
+	using SlotBet = CCasinoGame::SlotBet;
 
 	struct DiceResult
 	{
@@ -32,23 +24,16 @@ public:
 		std::vector<SlotBet> m_vPlayers{};
 	};
 
-	using FOnEvent = std::function<void(int ClientID, const SlotBet&)>;
-	using FOnStart = std::function<void()>;
+	using FOnEvent = CCasinoGame::FOnEvent;
+	using FOnStart = CCasinoGame::FOnStart;
 	using FOnFinished = std::function<void(const DiceResult&)>;
 
 private:
-	int m_LobbyDurationTicks{};
-	int m_ShowResultTicks{};
 	CEntityDiceLaser* m_apDice[2]{};
 	EDiceGameState m_State = EDiceGameState::LOBBY;
-	int m_StateEndTick{};
-	std::vector<SlotBet> m_vPlayers{};
 	int m_aFaces[2]{};
 	int m_FinishedDice{};
 
-	FOnEvent m_pfnOnJoin;
-	FOnEvent m_pfnOnLeave;
-	FOnStart m_pfnOnStart;
 	FOnFinished m_pfnOnFinished;
 
 	void EnterLobby();
@@ -64,17 +49,13 @@ public:
 
 	bool Join(int ClientID, int Bet, EDiceBetType Type, int Threshold);
 	bool Leave(int ClientID, int* pRefund = nullptr);
-	void SettleBet(SlotBet& Bet);
-	bool IsPlayerJoined(int ClientID) const { return std::any_of(m_vPlayers.begin(), m_vPlayers.end(), [&](const SlotBet& b) { return b.m_ClientID == ClientID; }); }
+	bool IsPlayerJoined(int ClientID) const { return CCasinoGame::IsPlayerJoined(ClientID); }
 
-	void SetOnJoin(FOnEvent pfCallback) { m_pfnOnJoin = std::move(pfCallback); }
-	void SetOnLeave(FOnEvent pfCallback) { m_pfnOnLeave = std::move(pfCallback); }
-	void SetOnStart(FOnStart pfCallback) { m_pfnOnStart = std::move(pfCallback); }
 	void SetOnFinished(FOnFinished pfCallback) { m_pfnOnFinished = std::move(pfCallback); }
 
 	EDiceGameState GetState() const { return m_State; }
 	vec2 GetPos() const { return m_Pos; }
-	int GetPlayersCount() const { return (int)m_vPlayers.size(); }
+	int GetPlayersCount() const { return CCasinoGame::GetPlayersCount(); }
 	int GetTicksLeft() const;
 
 	static float GetWinProbability(EDiceBetType Type, int Threshold);
@@ -84,4 +65,4 @@ public:
 	static const char* BetTypeName(EDiceBetType Type);
 };
 
-#endif // GAME_SERVER_CORE_ENTITIES_CASINO_DICE_DUEL_GAME_H
+#endif // GAME_SERVER_CORE_CASINO_DICE_DUEL_GAME_H

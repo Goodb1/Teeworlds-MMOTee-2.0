@@ -97,7 +97,7 @@ int CEntityDiceLaser::RandomFace()
 }
 
 CEntityDiceLaser::CEntityDiceLaser(CGameWorld* pGameWorld, int OwnerCID, vec2 Pos, int InitialFace, float Scale)
-	: CEntity(pGameWorld, CGameWorld::ENTTYPE_LASER, Pos, 0, OwnerCID), m_CurrentFace(clamp(InitialFace, 1, 6))
+	: CEntity(pGameWorld, CGameWorld::ENTTYPE_VISUAL, Pos, 0, OwnerCID), m_CurrentFace(clamp(InitialFace, 1, 6))
 	, m_FinalFace(m_CurrentFace), m_RollTicks(0), m_IsRolling(false), m_Scale(maximum(0.1f, Scale)), m_pfnOnRollFinished(nullptr)
 {
 	AddSnappingGroupIds(DICE_SNAP_GROUP, MAX_DICE_FACE_LINES);

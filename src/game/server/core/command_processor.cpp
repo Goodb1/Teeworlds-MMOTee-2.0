@@ -9,7 +9,7 @@
 #include <components/houses/entities/house_door.h>
 #include <game/server/gamecontext.h>
 
-#include <entities/casino/dice_duel_game.h>
+#include <casino/dice_duel_game.h>
 #include <game/server/worldmodes/default.h>
 
 #include <generated/version.h>

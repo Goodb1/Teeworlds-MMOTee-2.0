@@ -6,7 +6,7 @@
 #include <game/server/gamecontext.h>
 #include <generated/server_data.h>
 
-#include <entities/casino/dice_duel_game.h>
+#include <casino/dice_duel_game.h>
 #include <game/server/worldmodes/default.h>
 
 #include <game/server/core/components/inventory/inventory_manager.h>

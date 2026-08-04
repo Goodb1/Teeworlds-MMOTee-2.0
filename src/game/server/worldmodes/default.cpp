@@ -6,7 +6,7 @@
 #include <game/server/core/entities/logic/logicwall.h>
 
 #include "game/server/entities/pickup.h"
-#include "game/server/core/entities/casino/dice_duel_game.h"
+#include "game/server/core/casino/dice_duel_game.h"
 #include "game/server/core/entities/logic/botwall.h"
 #include "game/server/core/entities/items/gathering_node.h"
 #include "game/server/core/entities/items/money_bag.h"
@@ -203,7 +203,7 @@ void CGameControllerDefault::OnEntity(int Index, vec2 Pos, int Flags)
 		{
 			const char* pCurrencyName = GS()->GetItemInfo(slotBet.m_Currency)->GetName();
 			GS()->Chat(ClientID, "{~} bet '{} ({$})' for {} {}", Server()->ClientName(ClientID), 
-				pCurrencyName, slotBet.m_Bet, CDiceDuelGame::BetTypeName(slotBet.m_Type), slotBet.m_Threshold);
+				pCurrencyName, slotBet.m_Bet, CDiceDuelGame::BetTypeName((EDiceBetType)slotBet.m_Type), slotBet.m_Threshold);
 		});
 
 		pCasinoTable->SetOnLeave([this](int ClientID, const CDiceDuelGame::SlotBet& slotBet) 
