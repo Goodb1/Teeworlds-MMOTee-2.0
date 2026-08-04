@@ -197,7 +197,7 @@ bool CDiceDuelGame::Join(int ClientID, int Bet, EDiceBetType Type, int Threshold
 	if (IsPlayerJoined(ClientID))
 		return false;
 
-	const auto Currency = pPlayer->m_CurrencyCasinoDiceItemID;
+	const auto Currency = pPlayer->m_CurrencyCasinoItemID;
 	return CCasinoGame::Join(ClientID, Bet, static_cast<int>(Type), Threshold, Currency);
 }
 

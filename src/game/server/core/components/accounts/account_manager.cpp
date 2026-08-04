@@ -5,9 +5,10 @@
 #include <base/hash_ctxt.h>
 #include <game/server/gamecontext.h>
 #include <generated/server_data.h>
+#include <game/server/worldmodes/default.h>
 
 #include <casino/dice_duel_game.h>
-#include <game/server/worldmodes/default.h>
+#include <casino/roulette_game.h>
 
 #include <game/server/core/components/inventory/inventory_manager.h>
 #include <game/server/core/components/mails/mailbox_manager.h>
@@ -825,7 +826,7 @@ void CAccountManager::OnCharacterTile(CCharacter* pChr)
 	int ClientID = pPlayer->GetCID();
 
 	HANDLE_TILE_MOTD_MENU(pPlayer, pChr, TILE_BANK_MANAGER, MOTD_MENU_BANK_MANAGER)
-	HANDLE_TILE_MOTD_MENU(pPlayer, pChr, TILE_CASINO_DICE, MOTD_MENU_CASINO_DICE)
+	HANDLE_TILE_MOTD_MENU(pPlayer, pChr, TILE_CASINO_ACTION, MOTD_MENU_CASINO)
 
 	// selector language by action tile
 	const auto TrySelectLanguageInActionZone = [&](const char* pActionZone, const char* pLanguageFile, const char* pLanguageName)
@@ -1008,65 +1009,101 @@ bool CAccountManager::OnSendMenuMotd(CPlayer* pPlayer, int Menulist)
 	}
 
 	// motd menu casino dice
-	if (Menulist == MOTD_MENU_CASINO_DICE)
+	if (Menulist == MOTD_MENU_CASINO)
 	{
 		auto* pController = dynamic_cast<CGameControllerDefault*>(GS()->m_pController);
 		if (!pController)
 			return true;
 
-		CDiceDuelGame* pTable = pController->GetDiceDuelGameInRange(pPlayer->m_ViewPos);
-		if (!pTable)
+		CCasinoGame* pGame = pController->GetCasinoGameInRange(pPlayer->m_ViewPos);
+		if (!pGame)
+			return false;
+
+		CDiceDuelGame* pDiceGame = dynamic_cast<CDiceDuelGame*>(pGame);
+		CRouletteGame* pRouletteGame = dynamic_cast<CRouletteGame*>(pGame);
+		if (!pDiceGame && !pRouletteGame)
 			return true;
 
-		int TimeLeft = (pTable->GetTicksLeft() / Server()->TickSpeed());
-		const auto* pCurrency = pPlayer->GetItem(pPlayer->m_CurrencyCasinoDiceItemID);
-		MotdMenu MCasino(ClientID, MTFLAG_ALWAYS_UPDATE, "Here you can play the dice game. You can bet gold and try your luck. The more you bet, the higher your chances of winning.");
-		MCasino.AddText("Casino Dice \u2696");
+		const auto* pCurrency = pPlayer->GetItem(pPlayer->m_CurrencyCasinoItemID);
+		const int TimeLeft = (pGame->GetTicksLeft() / Server()->TickSpeed());
+		const bool bIsJoined = pGame->IsPlayerJoined(pPlayer->GetCID());
+		const char* pMenuDesc = pDiceGame
+			? "Roll the dice and test your luck!\nThe more you bet, the higher your chances of winning."
+			: "Spin the wheel of fortune!\nThe more you bet, the higher your chances of winning.";
+		const char* pMenuTitle = pDiceGame ? "\u2696 Casino: Dice Duel \u2696" : "\u2696 Casino: Roulette \u2696";
+		MotdMenu MCasino(ClientID, MTFLAG_ALWAYS_UPDATE, pMenuDesc);
+		MCasino.AddText(pMenuTitle);
 		MCasino.AddSeparateLine();
-		
-		// bet currency and amount
-		MCasino.AddText("Enter the amount bet");
-		MCasino.AddMenu(MOTD_MENU_CASINO_DICE_CURRENCY_SELECT, NOPE, "{} ({$})", pCurrency->Info()->GetName(), 
-			pCurrency->GetID() == itGold ? pPlayer->Account()->GetTotalGold() : pCurrency->GetValue());
+
+		MCasino.AddText("1. Setup your bet:");
+		MCasino.AddMenu(MOTD_MENU_CASINO_CURRENCY_SELECT, NOPE, "Currency: {} ({$})", pCurrency->Info()->GetName(), 
+			(pCurrency->GetID() == itGold) ? pPlayer->Account()->GetTotalGold() : pCurrency->GetValue());
 		MCasino.AddField(BET_FIELD_AMOUNT, MTTEXTINPUTFLAG_ONLY_NUMERIC);
 		MCasino.AddSeparateLine();
-		
-		// information about the game state
-		if(TimeLeft > 0 && pTable->GetState() == EDiceGameState::LOBBY)
-			MCasino.AddText("Start rolling: {} sec.", TimeLeft);
-		else if (pTable->GetState() == EDiceGameState::ROLLING)
-			MCasino.AddText("Rolling the dice.");
-		else if (pTable->GetState() == EDiceGameState::SHOW_RESULT)
-			MCasino.AddText("Waiting to start round.");
-		else
-			MCasino.AddText("Waiting for players.");
 
-		// bet or leave
-		if(pTable->IsPlayerJoined(pPlayer->GetCID()))
-			MCasino.AddOption("DICE_BET_LEAVE", "Leave the game");
+		if (pDiceGame)
+		{
+			if (TimeLeft > 0 && pDiceGame->GetState() == EDiceGameState::LOBBY)
+				MCasino.AddText("Starting in: {} sec.", TimeLeft);
+			else if (pDiceGame->GetState() == EDiceGameState::ROLLING)
+				MCasino.AddText("Rolling the dice...");
+			else if (pDiceGame->GetState() == EDiceGameState::SHOW_RESULT)
+				MCasino.AddText("Waiting to start round...");
+			else
+				MCasino.AddText("Waiting for players...");
+
+			MCasino.AddSeparateLine();
+		}
+		else if (pRouletteGame)
+		{
+			if (TimeLeft > 0 && pRouletteGame->GetState() == ERouletteState::LOBBY)
+				MCasino.AddText("Starting in: {} sec.", TimeLeft);
+			else if (pRouletteGame->GetState() == ERouletteState::SPINNING)
+				MCasino.AddText("Spinning the wheel...");
+			else if (pRouletteGame->GetState() == ERouletteState::SHOW_RESULT)
+				MCasino.AddText("Waiting to start round...");
+			else
+				MCasino.AddText("Waiting for players...");
+			MCasino.AddSeparateLine();
+		}
+
+		MCasino.AddText("2. Actions:");
+		if (bIsJoined)
+		{
+			MCasino.AddOption("CASINO_BET_LEAVE", "Leave the game");
+		}
 		else
 		{
-			MCasino.AddOption("DICE_BET_ENTER", "Bet on High (8-12)").Pack(EDiceBetType::HIGH, 7);
-			MCasino.AddOption("DICE_BET_ENTER", "Bet on Equal (7)").Pack(EDiceBetType::EQUAL, 7);
-			MCasino.AddOption("DICE_BET_ENTER", "Bet on Low (2-6)").Pack(EDiceBetType::LOW, 7);
+			if (pDiceGame)
+			{
+				MCasino.AddOption("DICE_BET_ENTER", "\u2B06 Bet on High (8-12)").Pack(EDiceBetType::HIGH, 7);
+				MCasino.AddOption("DICE_BET_ENTER", "Bet on Equal (7)").Pack(EDiceBetType::EQUAL, 7);
+				MCasino.AddOption("DICE_BET_ENTER", "\u2B07 Bet on Low (2-6)").Pack(EDiceBetType::LOW, 7);
+			}
+			else if (pRouletteGame)
+			{
+				MCasino.AddOption("ROULETTE_BET_ENTER", "Bet on Red").Pack(ERouletteColor::RED);
+				MCasino.AddOption("ROULETTE_BET_ENTER", "Bet on Black").Pack(ERouletteColor::BLACK);
+			}
 		}
-		MCasino.Send(MOTD_MENU_CASINO_DICE);
+
+		MCasino.Send(MOTD_MENU_CASINO);
 		return true;
 	}
 
-	if (Menulist == MOTD_MENU_CASINO_DICE_CURRENCY_SELECT)
+	if (Menulist == MOTD_MENU_CASINO_CURRENCY_SELECT)
 	{
-		MotdMenu MCasino(ClientID, MTFLAG_ALWAYS_UPDATE, "Here you can play the dice game. You can bet gold and try your luck. The more you bet, the higher your chances of winning.");
+		MotdMenu MCasino(ClientID, MTFLAG_ALWAYS_UPDATE);
 		for(auto& [ItemID, ItemData] : CPlayerItem::Data()[ClientID])
 		{
 			if(ItemData.Info()->IsGroup(ItemGroup::Currency))
 			{
-				MCasino.AddOption("DICE_CURRENCY_SELECT", "{} ({$})", ItemData.Info()->GetName(), 
+				MCasino.AddOption("CASINO_CURRENCY_SELECT", "{} ({$})", ItemData.Info()->GetName(), 
 					(ItemID == itGold ? pPlayer->Account()->GetTotalGold() : ItemData.GetValue())).Pack(ItemID);
 			}
 		}
 		MCasino.AddBackpage();
-		MCasino.Send(MOTD_MENU_CASINO_DICE_CURRENCY_SELECT);
+		MCasino.Send(MOTD_MENU_CASINO_CURRENCY_SELECT);
 		return true;
 	}
 
@@ -1075,13 +1112,49 @@ bool CAccountManager::OnSendMenuMotd(CPlayer* pPlayer, int Menulist)
 
 bool CAccountManager::OnPlayerMotdCommand(CPlayer* pPlayer, CMotdPlayerData* pMotdData, const char* pCmd)
 {
-	// dice bet currency select
-	if (strcmp(pCmd, "DICE_CURRENCY_SELECT") == 0)
+	// casino bet currency select
+	if (strcmp(pCmd, "CASINO_CURRENCY_SELECT") == 0)
 	{
 		const auto& [ItemID] = pMotdData->GetCurrent()->Unpack<int>();
-		pPlayer->m_CurrencyCasinoDiceItemID = ItemID;
+		pPlayer->m_CurrencyCasinoItemID = ItemID;
 		pPlayer->CloseMotdMenu();
-		GS()->SendMenuMotd(pPlayer, MOTD_MENU_CASINO_DICE);
+		GS()->SendMenuMotd(pPlayer, MOTD_MENU_CASINO);
+		return true;
+	}
+
+	// casino bet leave
+	if (strcmp(pCmd, "CASINO_BET_LEAVE") == 0)
+	{
+		auto* pController = dynamic_cast<CGameControllerDefault*>(GS()->m_pController);
+		if (!pController)
+			return true;
+
+		CCasinoGame* pGame = pController->GetCasinoGameInRange(pPlayer->m_ViewPos);
+		if (pGame && pGame->Leave(pPlayer->GetCID()))
+			GS()->Chat(pPlayer->GetCID(), "You have left the dice game.");
+		return true;
+	}
+
+	// roulette bet currency select
+	if (strcmp(pCmd, "ROULETTE_BET_ENTER") == 0)
+	{
+		const auto& [Color] = pMotdData->GetCurrent()->Unpack<ERouletteColor>();
+		const auto Bet = pMotdData->GetFieldStr(BET_FIELD_AMOUNT);
+		if (!Bet.has_value())
+		{
+			GS()->Chat(pPlayer->GetCID(), "Please enter a bet amount.");
+			return true;
+		}
+
+		const auto BetAmount = std::stoi(Bet.value());
+		auto* pController = dynamic_cast<CGameControllerDefault*>(GS()->m_pController);
+		if (pController)
+		{
+			CCasinoGame* pGame = pController->GetCasinoGameInRange(pPlayer->m_ViewPos);
+			CRouletteGame* pTable = dynamic_cast<CRouletteGame*>(pGame);
+			if (!pTable || !pTable->Join(pPlayer->GetCID(), BetAmount, ERouletteBetKind::COLOR, (int)Color))
+				GS()->Chat(pPlayer->GetCID(), "Failed to join the roulette game. Please check your gold and try again.");
+		}
 		return true;
 	}
 
@@ -1100,23 +1173,11 @@ bool CAccountManager::OnPlayerMotdCommand(CPlayer* pPlayer, CMotdPlayerData* pMo
 		auto* pController = dynamic_cast<CGameControllerDefault*>(GS()->m_pController);
 		if (pController)
 		{
-			CDiceDuelGame* pTable = pController->GetDiceDuelGameInRange(pPlayer->m_ViewPos);
+			CCasinoGame* pGame = pController->GetCasinoGameInRange(pPlayer->m_ViewPos);
+			CDiceDuelGame* pTable = dynamic_cast<CDiceDuelGame*>(pGame);
 			if (!pTable || !pTable->Join(pPlayer->GetCID(), BetAmount, BetType, Threshold))
 				GS()->Chat(pPlayer->GetCID(), "Failed to join the dice game. Please check your gold and try again.");
 		}
-		return true;
-	}
-
-	// dice bet leave
-	if (strcmp(pCmd, "DICE_BET_LEAVE") == 0)
-	{
-		auto* pController = dynamic_cast<CGameControllerDefault*>(GS()->m_pController);
-		if(!pController)
-			return true;
-
-		CDiceDuelGame* pTable = pController->GetDiceDuelGameInRange(pPlayer->m_ViewPos);
-		if(pTable && pTable->Leave(pPlayer->GetCID()))
-			GS()->Chat(pPlayer->GetCID(), "You have left the dice game.");
 		return true;
 	}
 

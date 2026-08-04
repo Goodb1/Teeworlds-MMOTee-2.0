@@ -6,13 +6,13 @@
 #include <game/server/gamecontroller.h>
 
 class CEntityMoneyBag;
-class CDiceDuelGame;
+class CCasinoGame;
 class CGameControllerDefault : public IGameController
 {
 	int m_MoneyBagTick{};
 	PathRequestHandle m_PathMoneyBag{};
 	std::vector<CEntityMoneyBag*> m_vMoneyBags{};
-	std::vector<CDiceDuelGame*> m_vDiceDuelGames{};
+	std::vector<CCasinoGame*> m_vCasinoGames{};
 
 public:
 	CGameControllerDefault(class CGS *pGameServer);
@@ -31,6 +31,6 @@ public:
 
 	void TryGenerateMoneyBag();
 
-	CDiceDuelGame* GetDiceDuelGameInRange(vec2 Pos) const;
+	CCasinoGame* GetCasinoGameInRange(vec2 Pos) const;
 };
 #endif

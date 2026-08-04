@@ -46,6 +46,9 @@ public:
 	CCasinoGame(CGS* pGS, int LobbyDurationTicks = 15, int ShowResultTicks = 4);
 	virtual ~CCasinoGame();
 
+	virtual void Tick() { }
+	virtual vec2 GetPos() const { return vec2(0,0); }
+
 	bool Join(int ClientID, int Bet, int Type, int Threshold, int CurrencyItemID);
 	bool Leave(int ClientID, int* pRefund = nullptr);
 	void SettleBet(SlotBet& Bet);

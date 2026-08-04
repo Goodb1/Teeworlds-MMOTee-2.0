@@ -89,7 +89,7 @@ public:
 	std::optional<ItemType> m_InventoryItemTypeFilter{};
 	std::optional<int> m_GroupFilter{};
 	std::optional<int> m_SubgroupFilter {};
-	int m_CurrencyCasinoDiceItemID{};
+	int m_CurrencyCasinoItemID{};
 
 	char m_aLastMsg[256]{};
 	StructLatency m_Latency;

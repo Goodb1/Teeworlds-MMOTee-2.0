@@ -7,6 +7,8 @@
 
 #include "game/server/entities/pickup.h"
 #include "game/server/core/casino/dice_duel_game.h"
+#include "game/server/core/casino/roulette_game.h"
+#include "game/server/core/casino/casino_game.h"
 #include "game/server/core/entities/logic/botwall.h"
 #include "game/server/core/entities/items/gathering_node.h"
 #include "game/server/core/entities/items/money_bag.h"
@@ -35,15 +37,15 @@ CGameControllerDefault::~CGameControllerDefault()
 	}
 	m_vMoneyBags.clear();
 
-	for (auto* pDiceDuelGame : m_vDiceDuelGames)
+	for (auto* pGame : m_vCasinoGames)
 	{
-		if (pDiceDuelGame)
+		if (pGame)
 		{
-			delete pDiceDuelGame;
-			pDiceDuelGame = nullptr;
+			delete pGame;
+			pGame = nullptr;
 		}
 	}
-	m_vDiceDuelGames.clear();
+	m_vCasinoGames.clear();
 }
 
 void CGameControllerDefault::OnCharacterDamage(CPlayer* pFrom, CPlayer* pTo, int Damage)
@@ -227,7 +229,27 @@ void CGameControllerDefault::OnEntity(int Index, vec2 Pos, int Flags)
 			}
 		});
 
-		m_vDiceDuelGames.push_back(pCasinoTable);
+		m_vCasinoGames.push_back(pCasinoTable);
+	}
+	else if (Index == ENTITY_CASINO_ROULETTE)
+	{
+		auto* pRoulette = new CRouletteGame(GS(), Pos, 8 * Server()->TickSpeed(), 2 * Server()->TickSpeed());
+		pRoulette->SetOnFinished([this](const CRouletteGame::RouletteResult& r)
+		{
+			for (const auto& slotBet : r.m_vPlayers)
+			{
+				const char* pCurrencyName = GS()->GetItemInfo(slotBet.m_Currency)->GetName();
+				if (slotBet.m_Win)
+				{
+					GS()->Chat(slotBet.m_ClientID, "Win: {} ({$})", pCurrencyName, slotBet.m_Payout);
+					GS()->Chat(-1, "[Casino Roulette] {~} won '{} ({$})'.", Server()->ClientName(slotBet.m_ClientID), pCurrencyName, slotBet.m_Payout);
+				}
+				else
+					GS()->Chat(slotBet.m_ClientID, "Lose: {} ({$})", pCurrencyName, slotBet.m_Bet);
+			}
+		});
+
+		m_vCasinoGames.push_back(pRoulette);
 	}
 }
 
@@ -296,10 +318,10 @@ void CGameControllerDefault::OnPlayerDisconnect(CPlayer* pPlayer)
 
 void CGameControllerDefault::Tick()
 {
-	for (auto* pDiceDuelGame : m_vDiceDuelGames)
+	for (auto* pGame : m_vCasinoGames)
 	{
-		if (pDiceDuelGame)
-			pDiceDuelGame->Tick();
+		if (pGame)
+			pGame->Tick();
 	}
 
 	TryGenerateMoneyBag();
@@ -341,13 +363,25 @@ void CGameControllerDefault::TryGenerateMoneyBag()
 	}
 }
 
-CDiceDuelGame* CGameControllerDefault::GetDiceDuelGameInRange(vec2 Pos) const
+CCasinoGame* CGameControllerDefault::GetCasinoGameInRange(vec2 Pos) const
 {
-	for (auto* pDiceDuelGame : m_vDiceDuelGames)
+	for (auto* pGame : m_vCasinoGames)
 	{
-		if (!pDiceDuelGame || distance(pDiceDuelGame->GetPos(), Pos) >= 800.f)
+		if (!pGame)
 			continue;
-		return pDiceDuelGame;
+		// try to query position if derived class provides GetPos()
+
+		// prefer dynamic cast for known types with GetPos()
+		if (auto* pDice = dynamic_cast<CDiceDuelGame*>(pGame))
+		{
+			if (distance(pDice->GetPos(), Pos) < 800.f)
+				return pGame;
+		}
+		else if (auto* pRoulette = dynamic_cast<CRouletteGame*>(pGame))
+		{
+			if (distance(pRoulette->GetPos(), Pos) < 800.f)
+				return pGame;
+		}
 	}
 	return nullptr;
 }

@@ -39,7 +39,7 @@ CPlayer::CPlayer(CGS* pGS, int ClientID) : m_pGS(pGS), m_ClientID(ClientID)
 	m_aPlayerTick[Die] = Server()->Tick();
 	m_aPlayerTick[Respawn] = Server()->Tick() + Server()->TickSpeed();
 	m_ShowHealthNicknameTick = 0;
-	m_CurrencyCasinoDiceItemID = itGold;
+	m_CurrencyCasinoItemID = itGold;
 
 	m_WantSpawn = true;
 	m_Afk = false;

@@ -189,7 +189,8 @@ void CCommandProcessor::ConChatDice(IConsole::IResult* pResult, void* pUser)
 	if (!pController)
 		return;
 
-	CDiceDuelGame* pTable = pController->GetDiceDuelGameInRange(pPlayer->m_ViewPos);
+	CCasinoGame* pGame = pController->GetCasinoGameInRange(pPlayer->m_ViewPos);
+	CDiceDuelGame* pTable = dynamic_cast<CDiceDuelGame*>(pGame);
 	if (!pTable)
 	{
 		pGS->Chat(ClientID, "There are no dice tables on this map.");
@@ -249,7 +250,7 @@ void CCommandProcessor::ConChatDice(IConsole::IResult* pResult, void* pUser)
 		}
 
 		// join lobby
-		pPlayer->m_CurrencyCasinoDiceItemID = itGold;
+		pPlayer->m_CurrencyCasinoItemID = itGold;
 		if (!pTable->Join(ClientID, Bet, Type, Threshold))
 		{
 			pPlayer->Account()->AddGold(Bet);
