@@ -30,6 +30,7 @@ private:
 	bool m_IsFading{};
 	int m_FadeTicks{};
 	int m_FadeRemaining{};
+	int m_TargetSlotIndex{};
 	FSpinFinishedCallback m_pfnOnSpinFinished;
 
 	static float EaseInOutSine(float t);

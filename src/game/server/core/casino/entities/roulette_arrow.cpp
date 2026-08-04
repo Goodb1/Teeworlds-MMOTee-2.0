@@ -6,12 +6,10 @@
 static constexpr int ROULETTE_SLOTS = 37;
 
 // wheel layout as read from the map (clockwise starting from '0' at bottom):
-// 0, 26, 3, 35, 12, 28, 7, 29, 18, 22, 9, 31, 14, 20, 1, 33, 16, 24,
-// 5, 10, 23, 8, 30, 11, 36, 13, 27, 6, 34, 17, 25, 2, 21, 4, 19, 15, 32
 static const int g_aRouletteOrder[ROULETTE_SLOTS] =
 {
-	0, 26, 3, 35, 12, 28, 7, 29, 18, 22, 9, 31, 14, 20, 1, 33, 16, 24,
-	5, 10, 23, 8, 30, 11, 36, 13, 27, 6, 34, 17, 25, 2, 21, 4, 19, 15, 32
+	0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23,
+	10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26
 };
 
 // slot "0" is at the bottom of the wheel (angle = +pi/2 in screen coords where +y is down).
@@ -88,6 +86,7 @@ void CEntityRouletteArrow::Spin(int DurationTicks, int FinalNumber, FSpinFinishe
 		}
 	}
 
+	m_TargetSlotIndex = slotIndex;
 	m_DurationTicks = DurationTicks;
 	m_RemainingTicks = DurationTicks;
 	m_FinalNumber = FinalNumber;
@@ -97,10 +96,12 @@ void CEntityRouletteArrow::Spin(int DurationTicks, int FinalNumber, FSpinFinishe
 
 	const float targetAngle = AngleForSlotIndex(slotIndex);
 	const int extraSpins = 4 + (rand() % 3);
-	m_TotalRotation = extraSpins * 2.0f * pi + NormalizeAngleRad(targetAngle - NormalizeAngleRad(m_StartAngle));
+	const float startNorm = NormalizeAngleRad(m_StartAngle);
+	m_TotalRotation = extraSpins * 2.0f * pi + NormalizeAngleRad(targetAngle - startNorm);
 	m_pfnOnSpinFinished = std::move(pfnCallback);
 	m_IsSpinning = true;
 }
+
 
 void CEntityRouletteArrow::Tick()
 {
@@ -112,16 +113,11 @@ void CEntityRouletteArrow::Tick()
 
 		if (--m_RemainingTicks <= 0)
 		{
+			const float targetAngle = AngleForSlotIndex(m_TargetSlotIndex);
+			const int actualNumber = g_aRouletteOrder[m_TargetSlotIndex];
 			m_IsSpinning = false;
-			m_Angle = m_StartAngle + m_TotalRotation;
+			m_Angle = targetAngle;
 
-			// map final angle to slot -> number (for verification / callback)
-			const float ang = NormalizeAngleRad(m_Angle - BASE_ANGLE);
-			int slotIndex = ((int)floorf(ang / SLOT_ANGLE + 0.5f)) % ROULETTE_SLOTS;
-			if (slotIndex < 0) 
-				slotIndex += ROULETTE_SLOTS;
-
-			const int actualNumber = g_aRouletteOrder[slotIndex];
 			if (m_pfnOnSpinFinished)
 			{
 				auto cb = std::move(m_pfnOnSpinFinished);
@@ -132,7 +128,6 @@ void CEntityRouletteArrow::Tick()
 			m_IsFading = true;
 			m_FadeTicks = Server()->TickSpeed();
 			m_FadeRemaining = m_FadeTicks;
-
 			GS()->CreateFinishEffect(m_Pos);
 		}
 	}

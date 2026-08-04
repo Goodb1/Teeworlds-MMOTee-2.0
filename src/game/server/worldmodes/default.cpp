@@ -236,21 +236,26 @@ void CGameControllerDefault::OnEntity(int Index, vec2 Pos, int Flags)
 		auto* pRoulette = new CRouletteGame(GS(), Pos, 8 * Server()->TickSpeed(), 2 * Server()->TickSpeed());
 		pRoulette->SetOnFinished([this](const CRouletteGame::RouletteResult& r)
 		{
+			const char* pColorName = CRouletteGame::ColorName(r.m_Color);
 			for (const auto& slotBet : r.m_vPlayers)
 			{
 				const char* pCurrencyName = GS()->GetItemInfo(slotBet.m_Currency)->GetName();
 				if (slotBet.m_Win)
 				{
 					GS()->Chat(slotBet.m_ClientID, "Win: {} ({$})", pCurrencyName, slotBet.m_Payout);
-					GS()->Chat(-1, "[Casino Roulette] {~} won '{} ({$})'.", Server()->ClientName(slotBet.m_ClientID), pCurrencyName, slotBet.m_Payout);
+					GS()->Chat(-1, "[Casino Roulette] {~} won '{} ({$})' on {} ({}).", 
+						Server()->ClientName(slotBet.m_ClientID), pCurrencyName, slotBet.m_Payout, r.m_Number, pColorName);
 				}
 				else
-					GS()->Chat(slotBet.m_ClientID, "Lose: {} ({$})", pCurrencyName, slotBet.m_Bet);
+				{
+					GS()->Chat(slotBet.m_ClientID, "Lose: {} ({$}) — result was {} ({})", pCurrencyName, slotBet.m_Bet, r.m_Number, pColorName);
+				}
 			}
 		});
 
 		m_vCasinoGames.push_back(pRoulette);
 	}
+
 }
 
 void CGameControllerDefault::OnEntitySwitch(int Index, vec2 Pos, int Flags, int Number)

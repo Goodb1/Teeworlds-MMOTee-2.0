@@ -5,14 +5,13 @@
 #include "entities/roulette_arrow.h"
 
 // red numbers on a standard european wheel (rest are black; 0 is green)
-static constexpr bool IsRed(int n)
+static bool IsRed(int n)
 {
 	switch (n)
 	{
-		case 1: case 3: case 5: case 7: case 9:
-		case 12: case 14: case 16: case 18: case 19:
-		case 21: case 23: case 25: case 27: case 30:
-		case 32: case 34: case 36:
+		case 15: case 4: case 2: case 17: case 6: case 13:
+		case 11: case 8: case 10: case 24: case 33: case 20:
+		case 31: case 22: case 29: case 28: case 35: case 26:
 			return true;
 		default:
 			return false;
@@ -76,8 +75,8 @@ void CRouletteGame::EnterSpin()
 			const auto kind = static_cast<ERouletteBetKind>(bet.m_Type);
 			if (kind == ERouletteBetKind::COLOR)
 			{
-				const auto chosen = (bet.m_Threshold == (int)ERouletteColor::RED) ? ERouletteColor::RED : ERouletteColor::BLACK;
-				bet.m_Win = (m_ResultColor != ERouletteColor::GREEN && chosen == m_ResultColor);
+				const auto chosen = static_cast<ERouletteColor>(bet.m_Threshold);
+				bet.m_Win = (chosen == m_ResultColor);
 			}
 			else
 			{
@@ -166,23 +165,24 @@ bool CRouletteGame::IsValidBet(ERouletteBetKind Kind, int Value)
 	switch (Kind)
 	{
 		case ERouletteBetKind::COLOR: 
-			return (Value == (int)ERouletteColor::RED || Value == (int)ERouletteColor::BLACK);
+			return (Value == (int)ERouletteColor::RED || Value == (int)ERouletteColor::BLACK || Value == (int)ERouletteColor::GREEN);
 		case ERouletteBetKind::NUMBER:
 			return (Value >= 0 && Value <= 36);
 	}
 	return false;
 }
 
-float CRouletteGame::GetWinProbability(ERouletteBetKind Kind, int)
+float CRouletteGame::GetWinProbability(ERouletteBetKind Kind, int Value)
 {
 	switch (Kind)
 	{
-		case ERouletteBetKind::COLOR:
-			return 18.0f / 37.0f;
-		case ERouletteBetKind::NUMBER:
-			return  1.0f / 37.0f;
+	case ERouletteBetKind::COLOR:
+		if (Value == (int)ERouletteColor::GREEN)
+			return 1.0f / 37.0f;
+		return 18.0f / 37.0f;
+	case ERouletteBetKind::NUMBER:
+		return 1.0f / 37.0f;
 	}
-
 	return 0.0f;
 }
 
