@@ -1079,6 +1079,7 @@ bool CAccountManager::OnSendMenuMotd(CPlayer* pPlayer, int Menulist)
 			else if (pRouletteGame)
 			{
 				MCasino.AddOption("ROULETTE_BET_ENTER", "Bet on Red").Pack(ERouletteColor::RED);
+				MCasino.AddOption("ROULETTE_BET_ENTER", "Bet on Green").Pack(ERouletteColor::GREEN);
 				MCasino.AddOption("ROULETTE_BET_ENTER", "Bet on Black").Pack(ERouletteColor::BLACK);
 			}
 		}
