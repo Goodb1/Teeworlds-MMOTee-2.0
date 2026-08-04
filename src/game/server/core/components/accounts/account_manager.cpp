@@ -1030,12 +1030,12 @@ bool CAccountManager::OnSendMenuMotd(CPlayer* pPlayer, int Menulist)
 		const char* pMenuDesc = pDiceGame
 			? "Roll the dice and test your luck!\nThe more you bet, the higher your chances of winning."
 			: "Spin the wheel of fortune!\nThe more you bet, the higher your chances of winning.";
-		const char* pMenuTitle = pDiceGame ? "\u2696 Casino: Dice Duel \u2696" : "\u2696 Casino: Roulette \u2696";
+		const char* pMenuTitle = pDiceGame ? "\u2696 Casino: Dice Duel" : "\u2696 Casino: Roulette";
 		MotdMenu MCasino(ClientID, MTFLAG_ALWAYS_UPDATE, pMenuDesc);
 		MCasino.AddText(pMenuTitle);
 		MCasino.AddSeparateLine();
 
-		MCasino.AddText("1. Setup your bet:");
+		MCasino.AddText("Enter the amount bet:");
 		MCasino.AddMenu(MOTD_MENU_CASINO_CURRENCY_SELECT, NOPE, "Currency: {} ({$})", pCurrency->Info()->GetName(), 
 			(pCurrency->GetID() == itGold) ? pPlayer->Account()->GetTotalGold() : pCurrency->GetValue());
 		MCasino.AddField(BET_FIELD_AMOUNT, MTTEXTINPUTFLAG_ONLY_NUMERIC);
@@ -1051,8 +1051,6 @@ bool CAccountManager::OnSendMenuMotd(CPlayer* pPlayer, int Menulist)
 				MCasino.AddText("Waiting to start round...");
 			else
 				MCasino.AddText("Waiting for players...");
-
-			MCasino.AddSeparateLine();
 		}
 		else if (pRouletteGame)
 		{
@@ -1064,10 +1062,8 @@ bool CAccountManager::OnSendMenuMotd(CPlayer* pPlayer, int Menulist)
 				MCasino.AddText("Waiting to start round...");
 			else
 				MCasino.AddText("Waiting for players...");
-			MCasino.AddSeparateLine();
 		}
 
-		MCasino.AddText("2. Actions:");
 		if (bIsJoined)
 		{
 			MCasino.AddOption("CASINO_BET_LEAVE", "Leave the game");
@@ -1076,9 +1072,9 @@ bool CAccountManager::OnSendMenuMotd(CPlayer* pPlayer, int Menulist)
 		{
 			if (pDiceGame)
 			{
-				MCasino.AddOption("DICE_BET_ENTER", "\u2B06 Bet on High (8-12)").Pack(EDiceBetType::HIGH, 7);
+				MCasino.AddOption("DICE_BET_ENTER", "Bet on High (8-12)").Pack(EDiceBetType::HIGH, 7);
 				MCasino.AddOption("DICE_BET_ENTER", "Bet on Equal (7)").Pack(EDiceBetType::EQUAL, 7);
-				MCasino.AddOption("DICE_BET_ENTER", "\u2B07 Bet on Low (2-6)").Pack(EDiceBetType::LOW, 7);
+				MCasino.AddOption("DICE_BET_ENTER", "Bet on Low (2-6)").Pack(EDiceBetType::LOW, 7);
 			}
 			else if (pRouletteGame)
 			{
