@@ -10,7 +10,7 @@ public:
 	MapData(int width, int height)
 		: m_Width(width), m_Height(height),
 		m_Bits((width * height + 7) / 8, 0),
-		m_Teleports((width * height), ivec2 { -1, -1 }) {}
+		m_Teleports((width * height), ivec2{ -1, -1 }) {}
 
 	bool IsCollide(int x, int y) const
 	{
@@ -20,6 +20,7 @@ public:
 		const size_t index = y * m_Width + x;
 		return m_Bits[index / 8] & (1 << (index % 8));
 	}
+
 	void SetCollide(int x, int y, bool value)
 	{
 		if(x < 0 || x >= m_Width || y < 0 || y >= m_Height)
@@ -45,7 +46,7 @@ public:
 			return;
 
 		const size_t index = y1 * m_Width + x1;
-		m_Teleports[index] = ivec2 { x2, y2 };
+		m_Teleports[index] = ivec2{ x2, y2 };
 	}
 
 	ivec2 GetTeleportDestination(int x, int y) const
@@ -57,9 +58,9 @@ public:
 	const uint8_t* Data() const { return m_Bits.data(); }
 
 private:
-	int m_Width {};
-	int m_Height {};
-	std::vector<uint8_t> m_Bits {};
+	int m_Width{};
+	int m_Height{};
+	std::vector<uint8_t> m_Bits{};
 	std::vector<ivec2> m_Teleports{};
 };
 
@@ -78,11 +79,17 @@ private:
 	std::vector<vec2> FindPath(const ivec2& Start, const ivec2& End);
 	vec2 GetRandomWaypointRadius(const vec2& Pos, float Radius) const;
 
+	inline int ToIndex(const ivec2& Pos) const { return Pos.y * m_Width + Pos.x; }
+	inline int ToIndex(int x, int y) const { return y * m_Width + x; }
+
 	int m_Width{};
 	int m_Height{};
 	MapData m_MapData{};
 	std::vector<int> m_vCostSoFar{};
 	std::vector<ivec2> m_vCameFrom{};
+
+	uint32_t m_SearchId{};
+	std::vector<uint32_t> m_vVisitedSearch{};
 
 	std::queue<PathRequest> m_vRequestQueue{};
 	std::condition_variable m_Condition{};
