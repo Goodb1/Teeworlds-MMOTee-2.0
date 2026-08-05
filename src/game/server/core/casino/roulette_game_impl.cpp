@@ -49,7 +49,7 @@ void CRouletteGame::EnterLobby()
 
 void CRouletteGame::EnterSpin()
 {
-	const int Duration = m_pGS->Server()->TickSpeed() * 5;
+	const int Duration = m_pGS->Server()->TickSpeed() * 6;
 	int finalNumber = clamp((int)floorf(random_float(37.0f)), 0, 36);
 
 	m_State = ERouletteState::SPINNING;
@@ -73,10 +73,26 @@ void CRouletteGame::EnterSpin()
 		for (auto& bet : GetPlayers())
 		{
 			const auto kind = static_cast<ERouletteBetKind>(bet.m_Type);
+
 			if (kind == ERouletteBetKind::COLOR)
 			{
 				const auto chosen = static_cast<ERouletteColor>(bet.m_Threshold);
 				bet.m_Win = (chosen == m_ResultColor);
+			}
+			else if (kind == ERouletteBetKind::RANGE)
+			{
+				if (m_ResultNumber == 0)
+					bet.m_Win = false;
+				else
+				{
+					const auto range = static_cast<ERouletteRange>(bet.m_Threshold);
+					switch (range)
+					{
+						case ERouletteRange::LOW:  bet.m_Win = (m_ResultNumber >= 1 && m_ResultNumber <= 12); break;
+						case ERouletteRange::MID:  bet.m_Win = (m_ResultNumber >= 13 && m_ResultNumber <= 24); break;
+						case ERouletteRange::HIGH: bet.m_Win = (m_ResultNumber >= 25 && m_ResultNumber <= 36); break;
+					}
+				}
 			}
 			else
 			{
@@ -84,10 +100,8 @@ void CRouletteGame::EnterSpin()
 			}
 
 			bet.m_Payout = bet.m_Win ? CalcPayout(bet.m_Bet, kind, bet.m_Threshold) : 0;
-
 			if (bet.m_Win)
 				SettleBet(bet);
-			
 			Result.m_vPlayers.push_back(bet);
 		}
 
@@ -164,10 +178,16 @@ bool CRouletteGame::IsValidBet(ERouletteBetKind Kind, int Value)
 {
 	switch (Kind)
 	{
-		case ERouletteBetKind::COLOR: 
-			return (Value == (int)ERouletteColor::RED || Value == (int)ERouletteColor::BLACK || Value == (int)ERouletteColor::GREEN);
+		case ERouletteBetKind::COLOR:
+			return (Value == (int)ERouletteColor::GREEN
+				|| Value == (int)ERouletteColor::RED
+				|| Value == (int)ERouletteColor::BLACK);
 		case ERouletteBetKind::NUMBER:
 			return (Value >= 0 && Value <= 36);
+		case ERouletteBetKind::RANGE:
+			return (Value == (int)ERouletteRange::LOW
+				|| Value == (int)ERouletteRange::MID
+				|| Value == (int)ERouletteRange::HIGH);
 	}
 	return false;
 }
@@ -182,6 +202,8 @@ float CRouletteGame::GetWinProbability(ERouletteBetKind Kind, int Value)
 		return 18.0f / 37.0f;
 	case ERouletteBetKind::NUMBER:
 		return 1.0f / 37.0f;
+	case ERouletteBetKind::RANGE:
+		return 12.0f / 37.0f;
 	}
 	return 0.0f;
 }
@@ -198,30 +220,36 @@ int CRouletteGame::CalcPayout(int Bet, ERouletteBetKind Kind, int Value)
 	return m <= 0.0f ? 0 : (int)std::ceil(Bet * m);
 }
 
-const char* CRouletteGame::BetKindName(ERouletteBetKind K)
+const char* CRouletteGame::BetKindName(ERouletteBetKind Kind)
 {
-	switch (K)
+	switch (Kind)
 	{
-		case ERouletteBetKind::COLOR:
-			return "COLOR";
-		case ERouletteBetKind::NUMBER:
-			return "NUMBER";
+		case ERouletteBetKind::COLOR:  return "COLOR";
+		case ERouletteBetKind::NUMBER: return "NUMBER";
+		case ERouletteBetKind::RANGE:  return "RANGE";
+	}
+	return "?";
+}
+
+const char* CRouletteGame::ColorName(ERouletteColor Color)
+{
+	switch (Color)
+	{
+		case ERouletteColor::GREEN: return "GREEN";
+		case ERouletteColor::RED:   return "RED";
+		case ERouletteColor::BLACK: return "BLACK";
 	}
 
 	return "?";
 }
 
-const char* CRouletteGame::ColorName(ERouletteColor C)
+const char* CRouletteGame::RangeName(ERouletteRange Range)
 {
-	switch (C)
+	switch (Range)
 	{
-		case ERouletteColor::GREEN:
-			return "GREEN";
-		case ERouletteColor::RED:
-			return "RED";
-		case ERouletteColor::BLACK:
-			return "BLACK";
+		case ERouletteRange::LOW:  return "1-12";
+		case ERouletteRange::MID:  return "13-24";
+		case ERouletteRange::HIGH: return "25-36";
 	}
-
 	return "?";
 }

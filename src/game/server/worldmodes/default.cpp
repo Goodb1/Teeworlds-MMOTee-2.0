@@ -204,14 +204,13 @@ void CGameControllerDefault::OnEntity(int Index, vec2 Pos, int Flags)
 		pCasinoTable->SetOnJoin([this](int ClientID, const CDiceDuelGame::SlotBet& slotBet) 
 		{
 			const char* pCurrencyName = GS()->GetItemInfo(slotBet.m_Currency)->GetName();
-			GS()->Chat(ClientID, "{~} bet '{} ({$})' for {} {}", Server()->ClientName(ClientID), 
-				pCurrencyName, slotBet.m_Bet, CDiceDuelGame::BetTypeName((EDiceBetType)slotBet.m_Type), slotBet.m_Threshold);
+			GS()->Chat(ClientID, "You bet '{} ({$})' for {} {}", pCurrencyName, slotBet.m_Bet, CDiceDuelGame::BetTypeName((EDiceBetType)slotBet.m_Type), slotBet.m_Threshold);
 		});
 
 		pCasinoTable->SetOnLeave([this](int ClientID, const CDiceDuelGame::SlotBet& slotBet) 
 		{
 			const char* pCurrencyName = GS()->GetItemInfo(slotBet.m_Currency)->GetName();
-			GS()->Chat(ClientID, "{~} leave. Bet '{} ({$})'", Server()->ClientName(ClientID), pCurrencyName, slotBet.m_Bet);
+			GS()->Chat(ClientID, "You leave. Bet '{} ({$})'", pCurrencyName, slotBet.m_Bet);
 		});
 
 		pCasinoTable->SetOnFinished([this](const CDiceDuelGame::DiceResult& r) 
@@ -234,6 +233,39 @@ void CGameControllerDefault::OnEntity(int Index, vec2 Pos, int Flags)
 	else if (Index == ENTITY_CASINO_ROULETTE)
 	{
 		auto* pRoulette = new CRouletteGame(GS(), Pos, 8 * Server()->TickSpeed(), 2 * Server()->TickSpeed());
+		pRoulette->SetOnJoin([this](int ClientID, const CRouletteGame::SlotBet& slotBet)
+		{
+			char aBetDesc[64];
+			const char* pCurrencyName = GS()->GetItemInfo(slotBet.m_Currency)->GetName();
+			const auto kind = static_cast<ERouletteBetKind>(slotBet.m_Type);
+
+			switch (kind)
+			{
+				case ERouletteBetKind::COLOR:
+					str_format(aBetDesc, sizeof(aBetDesc), "COLOR %s",
+						CRouletteGame::ColorName(static_cast<ERouletteColor>(slotBet.m_Threshold)));
+					break;
+				case ERouletteBetKind::NUMBER:
+					str_format(aBetDesc, sizeof(aBetDesc), "NUMBER %d", slotBet.m_Threshold);
+					break;
+				case ERouletteBetKind::RANGE:
+					str_format(aBetDesc, sizeof(aBetDesc), "RANGE %s",
+						CRouletteGame::RangeName(static_cast<ERouletteRange>(slotBet.m_Threshold)));
+					break;
+				default:
+					str_format(aBetDesc, sizeof(aBetDesc), "?");
+				break;
+			}
+
+			GS()->Chat(ClientID, "You bet '{} ({$})' on {}", pCurrencyName, slotBet.m_Bet, aBetDesc);
+		});
+
+		pRoulette->SetOnLeave([this](int ClientID, const CRouletteGame::SlotBet& slotBet)
+		{
+			const char* pCurrencyName = GS()->GetItemInfo(slotBet.m_Currency)->GetName();
+			GS()->Chat(ClientID, "You left the roulette. Bet refunded: '{} ({$})'", pCurrencyName, slotBet.m_Bet);
+		});
+
 		pRoulette->SetOnFinished([this](const CRouletteGame::RouletteResult& r)
 		{
 			const char* pColorName = CRouletteGame::ColorName(r.m_Color);

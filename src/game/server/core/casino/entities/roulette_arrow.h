@@ -31,6 +31,8 @@ private:
 	int m_FadeTicks{};
 	int m_FadeRemaining{};
 	int m_TargetSlotIndex{};
+	int m_LastSoundTick{};
+	int m_LastTickedSlot{};
 	FSpinFinishedCallback m_pfnOnSpinFinished;
 
 	static float EaseInOutSine(float t);

@@ -1078,9 +1078,12 @@ bool CAccountManager::OnSendMenuMotd(CPlayer* pPlayer, int Menulist)
 			}
 			else if (pRouletteGame)
 			{
-				MCasino.AddOption("ROULETTE_BET_ENTER", "Bet on Red").Pack(ERouletteColor::RED);
-				MCasino.AddOption("ROULETTE_BET_ENTER", "Bet on Green").Pack(ERouletteColor::GREEN);
-				MCasino.AddOption("ROULETTE_BET_ENTER", "Bet on Black").Pack(ERouletteColor::BLACK);
+				MCasino.AddOption("ROULETTE_BET_ENTER", "Bet on range 1-12").Pack(ERouletteBetKind::RANGE, (int)ERouletteRange::LOW);
+				MCasino.AddOption("ROULETTE_BET_ENTER", "Bet on range 13-24").Pack(ERouletteBetKind::RANGE, (int)ERouletteRange::MID);
+				MCasino.AddOption("ROULETTE_BET_ENTER", "Bet on range 25-36").Pack(ERouletteBetKind::RANGE, (int)ERouletteRange::HIGH);
+				MCasino.AddOption("ROULETTE_BET_ENTER", "Bet on Red").Pack(ERouletteBetKind::COLOR, (int)ERouletteColor::RED);
+				MCasino.AddOption("ROULETTE_BET_ENTER", "Bet on Green").Pack(ERouletteBetKind::COLOR, (int)ERouletteColor::GREEN);
+				MCasino.AddOption("ROULETTE_BET_ENTER", "Bet on Black").Pack(ERouletteBetKind::COLOR, (int)ERouletteColor::BLACK);
 			}
 		}
 
@@ -1135,7 +1138,7 @@ bool CAccountManager::OnPlayerMotdCommand(CPlayer* pPlayer, CMotdPlayerData* pMo
 	// roulette bet currency select
 	if (strcmp(pCmd, "ROULETTE_BET_ENTER") == 0)
 	{
-		const auto& [Color] = pMotdData->GetCurrent()->Unpack<ERouletteColor>();
+		const auto& [Kind, Value] = pMotdData->GetCurrent()->Unpack<ERouletteBetKind, int>();
 		const auto Bet = pMotdData->GetFieldStr(BET_FIELD_AMOUNT);
 		if (!Bet.has_value())
 		{
@@ -1149,7 +1152,7 @@ bool CAccountManager::OnPlayerMotdCommand(CPlayer* pPlayer, CMotdPlayerData* pMo
 		{
 			CCasinoGame* pGame = pController->GetCasinoGameInRange(pPlayer->m_ViewPos);
 			CRouletteGame* pTable = dynamic_cast<CRouletteGame*>(pGame);
-			if (!pTable || !pTable->Join(pPlayer->GetCID(), BetAmount, ERouletteBetKind::COLOR, (int)Color))
+			if (!pTable || !pTable->Join(pPlayer->GetCID(), BetAmount, Kind, Value))
 				GS()->Chat(pPlayer->GetCID(), "Failed to join the roulette game. Please check your gold and try again.");
 		}
 		return true;

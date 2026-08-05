@@ -32,6 +32,15 @@ static float AngleForSlotIndex(int slotIndex)
 	return NormalizeAngleRad(BASE_ANGLE + slotIndex * SLOT_ANGLE);
 }
 
+static int SlotIndexFromAngle(float angle)
+{
+	const float ang = NormalizeAngleRad(angle - BASE_ANGLE);
+	int slotIndex = ((int)floorf(ang / SLOT_ANGLE + 0.5f)) % ROULETTE_SLOTS;
+	if (slotIndex < 0) 
+		slotIndex += ROULETTE_SLOTS;
+	return slotIndex;
+}
+
 float CEntityRouletteArrow::EaseInOutSine(float t)
 {
 	if (t <= 0.0f) 
@@ -39,8 +48,8 @@ float CEntityRouletteArrow::EaseInOutSine(float t)
 	if (t >= 1.0f) 
 		return 1.0f;
 
-	const float accelTime = 0.10f;
-	const float accelDist = 0.05f;
+	const float accelTime = 0.25f;
+	const float accelDist = 0.25f;
 	if (t < accelTime)
 	{
 		float x = t / accelTime;
@@ -93,15 +102,15 @@ void CEntityRouletteArrow::Spin(int DurationTicks, int FinalNumber, FSpinFinishe
 	m_StartAngle = m_Angle;
 	m_IsFading = false;
 	m_FadeRemaining = 0;
+	m_LastTickedSlot = SlotIndexFromAngle(m_StartAngle);
 
 	const float targetAngle = AngleForSlotIndex(slotIndex);
-	const int extraSpins = 4 + (rand() % 3);
+	const int extraSpins = 3 + (rand() % 2);
 	const float startNorm = NormalizeAngleRad(m_StartAngle);
 	m_TotalRotation = extraSpins * 2.0f * pi + NormalizeAngleRad(targetAngle - startNorm);
 	m_pfnOnSpinFinished = std::move(pfnCallback);
 	m_IsSpinning = true;
 }
-
 
 void CEntityRouletteArrow::Tick()
 {
@@ -111,6 +120,19 @@ void CEntityRouletteArrow::Tick()
 		const float t = clamp(elapsed / (float)m_DurationTicks, 0.0f, 1.0f);
 		m_Angle = m_StartAngle + m_TotalRotation * EaseInOutSine(t);
 
+		// create sound effect when passing a slot
+		const int currentSlot = SlotIndexFromAngle(m_Angle);
+		if (currentSlot != m_LastTickedSlot)
+		{
+			m_LastTickedSlot = currentSlot;
+			if (Server()->Tick() - m_LastSoundTick >= 2)
+			{
+				m_LastSoundTick = Server()->Tick();
+				GS()->CreateSound(m_Pos, SOUND_PLAYER_JUMP);
+			}
+		}
+
+		// check if the spin has finished
 		if (--m_RemainingTicks <= 0)
 		{
 			const float targetAngle = AngleForSlotIndex(m_TargetSlotIndex);
@@ -128,6 +150,8 @@ void CEntityRouletteArrow::Tick()
 			m_IsFading = true;
 			m_FadeTicks = Server()->TickSpeed();
 			m_FadeRemaining = m_FadeTicks;
+
+			GS()->CreateSound(m_Pos, SOUND_CTF_CAPTURE);
 			GS()->CreateFinishEffect(m_Pos);
 		}
 	}
