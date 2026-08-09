@@ -1,4 +1,4 @@
-#ifndef GAME_SERVER_CORE_CASINO_CASINO_GAME_H
+﻿#ifndef GAME_SERVER_CORE_CASINO_CASINO_GAME_H
 #define GAME_SERVER_CORE_CASINO_CASINO_GAME_H
 
 class CGS;
@@ -49,8 +49,8 @@ public:
 	virtual void Tick() { }
 	virtual vec2 GetPos() const { return vec2(0,0); }
 
-	bool Join(int ClientID, int Bet, int Type, int Threshold, int CurrencyItemID);
-	bool Leave(int ClientID, int* pRefund = nullptr);
+	virtual bool Join(int ClientID, int Bet, int Type, int Threshold, int CurrencyItemID);
+	virtual bool Leave(int ClientID, int* pRefund = nullptr);
 	void SettleBet(SlotBet& Bet);
 	void PurgeOutOfRange();
 

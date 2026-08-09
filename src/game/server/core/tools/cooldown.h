@@ -3,33 +3,42 @@
 
 class CGS;
 class IServer;
+class CPlayer;
 class CCharacter;
 using CCooldownCallback = std::function<void()>;
 
 class CCooldown
 {
-	int m_ClientID { NOPE };
-	std::string m_Name {};
-	vec2 m_Pos {};
-	int m_Tick {};
-	int m_StartedTick {};
-	CCooldownCallback m_Callback {};
-	bool m_Active {};
-	bool m_Interrupted {};
-
 public:
 	CCooldown() = default;
 
 	void Init(int ClientID);
-	void Start(int Time, std::string_view Name, CCooldownCallback fnCallback);
+	void Start(int DurationTicks, std::string_view Name, CCooldownCallback fnCallback);
 	void Reset();
 	void Tick();
 
-	[[nodiscard]] constexpr bool IsActive() const { return m_Active; }
+	[[nodiscard]] bool IsActive() const { return m_Active; }
 
 private:
-	[[nodiscard]] bool HasPlayerMoved(CCharacter* pChar) const;
-	void BroadcastCooldownInfo(const char* pMessage = nullptr) const;
+	static constexpr float kInterruptDistance = 48.0f;
+	static constexpr int kProgressUpdatesPerSecond = 25;
+	static constexpr int kProgressBarSegments = 10;
+
+	int m_ClientID{ NOPE };
+	std::string m_Name{};
+	vec2 m_StartPos{};
+	int m_Tick{};
+	int m_StartedTick{};
+	CCooldownCallback m_Callback{};
+	bool m_Active{};
+
+	[[nodiscard]] bool IsClientIDValid() const;
+	[[nodiscard]] CGS* GetGameServer() const;
+	[[nodiscard]] bool HasPlayerMoved(const CCharacter* pChar) const;
+
+	void Finish();
+	void Interrupt(const char* pReason);
+	void BroadcastCooldownInfo(const char* pMessage = "") const;
 	void BroadcastCooldownProgress(IServer* pServer) const;
 };
 

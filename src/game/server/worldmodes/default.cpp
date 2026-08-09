@@ -230,6 +230,7 @@ void CGameControllerDefault::OnEntity(int Index, vec2 Pos, int Flags)
 
 		m_vCasinoGames.push_back(pCasinoTable);
 	}
+
 	else if (Index == ENTITY_CASINO_ROULETTE)
 	{
 		auto* pRoulette = new CRouletteGame(GS(), Pos, 8 * Server()->TickSpeed(), 2 * Server()->TickSpeed());

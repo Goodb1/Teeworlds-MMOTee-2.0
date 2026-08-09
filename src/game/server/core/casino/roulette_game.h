@@ -19,7 +19,7 @@ public:
 	struct RouletteResult
 	{
 		int m_Number{};
-		ERouletteColor m_Color = ERouletteColor::GREEN;
+		ERouletteColor m_Color{};
 		std::vector<SlotBet> m_vPlayers{};
 	};
 
@@ -55,9 +55,9 @@ private:
 	vec2 m_Pos{};
 	CEntityRouletteArrow* m_pArrow{};
 
-	ERouletteState m_State = ERouletteState::LOBBY;
+	ERouletteState m_State{};
 	int m_ResultNumber{};
-	ERouletteColor m_ResultColor = ERouletteColor::GREEN;
+	ERouletteColor m_ResultColor{};
 	FOnFinished m_pfnOnFinished;
 
 	void EnterLobby();
